@@ -30,7 +30,10 @@
     --listening: #22c55e;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; overscroll-behavior: none; }
+  /* Force every form element to inherit the page font — kills serif fallbacks
+     in selects, inputs, buttons across browsers. */
+  button, input, select, textarea, optgroup { font-family: inherit; font-size: inherit; line-height: inherit; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, Arial, sans-serif; overscroll-behavior: none; }
   body { min-height: 100vh; }
   h1, h2, h3, .display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.04em; }
   .mono { font-family: 'JetBrains Mono', monospace; }
@@ -166,16 +169,19 @@
   .log { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
   .log-header { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
   .log-empty { padding: 18px; text-align: center; color: var(--text-faint); font-style: italic; font-size: 12px; }
-  .log-item { padding: 6px 8px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 22px 1fr auto auto auto auto; gap: 4px; align-items: center; font-size: 11px; }
+  .log-item { padding: 6px 8px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 22px 1fr auto auto auto auto auto; gap: 4px; align-items: center; font-size: 11px; }
   .log-item:last-child { border-bottom: none; }
   .log-period { font-family: 'Bebas Neue'; font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em; }
   .log-type { color: var(--text); font-weight: 500; font-size: 11px; line-height: 1.2; }
-  .log-time-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 48px; }
-  .log-time { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent); cursor: pointer; padding: 1px 3px; border-radius: 3px; }
-  .log-time:hover { background: var(--surface-2); }
+  .log-time-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 56px; }
+  .log-time { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent); cursor: pointer; padding: 2px 5px; border-radius: 3px; background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(249, 115, 22, 0.25); transition: background 0.12s; }
+  .log-time:hover { background: rgba(249, 115, 22, 0.22); border-color: var(--accent); color: #fff; }
+  .log-time::before { content: '▶'; font-size: 7px; margin-right: 3px; opacity: 0.7; }
   .log-time-stack .game-time { font-family: 'JetBrains Mono'; font-size: 9px; color: var(--defense); padding: 1px 3px; }
   .log-nudge { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); font-size: 9px; padding: 2px 4px; border-radius: 3px; cursor: pointer; font-family: 'JetBrains Mono'; min-width: 22px; }
   .log-nudge:hover { color: var(--text); background: var(--surface-3); }
+  .log-edit { background: transparent; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px; border-radius: 3px; font-size: 11px; }
+  .log-edit:hover { color: var(--text); background: var(--surface-2); }
   .log-del { background: transparent; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px; border-radius: 3px; font-size: 14px; }
   .log-del:hover { color: var(--turnover); }
 
@@ -262,6 +268,8 @@
         <div class="clock-time mono" id="gameClockTime" title="Tap to edit">08:00</div>
         <div class="clock-controls">
           <button class="clock-ctrl" id="gameClockToggle" title="Play/Pause">▶</button>
+          <button class="clock-ctrl" id="gameClockDown" title="−1 second (hold to repeat)">▼</button>
+          <button class="clock-ctrl" id="gameClockUp" title="+1 second (hold to repeat)">▲</button>
           <button class="clock-ctrl" id="gameClockReset" title="Reset to period length">↺</button>
         </div>
       </div>
@@ -332,19 +340,21 @@
     </div>
 
     <div class="section">
-      <div class="section-label">Rebounds, Steals &amp; Blocks</div>
-      <div class="btn-grid cols-2">
+      <div class="section-label">Rebounds, Steals, Blocks &amp; Deflections</div>
+      <div class="btn-grid cols-3">
         <button class="action-btn reb" data-action="off_reb">Off<span class="sub">Rebound</span></button>
         <button class="action-btn reb" data-action="def_reb">Def<span class="sub">Rebound</span></button>
         <button class="action-btn stl" data-action="steal">Steal</button>
         <button class="action-btn block" data-action="block">Block</button>
+        <button class="action-btn stl" data-action="deflection">Deflection</button>
       </div>
     </div>
 
     <div class="section">
       <div class="section-label">Habits</div>
-      <div class="btn-grid cols-2">
+      <div class="btn-grid cols-3">
         <button class="action-btn habit-pos" data-action="box_out">Box<span class="sub">Out</span></button>
+        <button class="action-btn habit" data-action="no_box_out">No Box<span class="sub">Out</span></button>
         <button class="action-btn habit" data-action="chicken_out">Chicken<span class="sub">Out</span></button>
       </div>
     </div>
@@ -447,11 +457,11 @@
       <br>
       Assists: <code>assist two</code> · <code>assist three</code>
       <br>
-      Rebounds &amp; Blocks: <code>off board</code> · <code>def board</code> · <code>block</code>
+      Rebounds, Blocks &amp; Deflections: <code>off board</code> · <code>def board</code> · <code>block</code> · <code>deflection</code> · <code>tipped</code>
       <br>
       Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code>
       <br>
-      Habits: <code>box out</code> · <code>chicken out</code> · <code>shied away</code>
+      Habits: <code>box out</code> · <code>no box out</code> · <code>chicken out</code> · <code>shied away</code>
       <br>
       Turnovers: <code>bad pass</code> · <code>lost handle</code> · <code>ball swiped</code>
       <br>
@@ -529,6 +539,9 @@ const ACTION_DEFS = {
   // Habits
   chicken_out: { label: 'Chicken Out',   category: 'habit' },
   box_out:     { label: 'Box Out',       category: 'habit' },
+  no_box_out:  { label: 'No Box Out',    category: 'habit' },
+  // Defensive plays (extension of R&S&B)
+  deflection:  { label: 'Deflection',    category: 'stl' },
   // Turnovers
   to_pass:   { label: 'Bad Pass TO',     category: 'to' },
   to_handle: { label: 'Lost Handle TO',  category: 'to' },
@@ -954,6 +967,30 @@ function resetGameClock() {
   gameClockSec = periodLengthSec;
   renderGameClock();
 }
+function bumpGameClock(deltaSec) {
+  gameClockSec = Math.max(0, gameClockSec + deltaSec);
+  renderGameClock();
+}
+function setupHoldRepeat(buttonId, fn, initialDelay = 400, repeatRate = 100) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  let timer = null, interval = null;
+  function start(e) {
+    e.preventDefault();
+    fn();
+    timer = setTimeout(() => { interval = setInterval(fn, repeatRate); }, initialDelay);
+  }
+  function stop() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (interval) { clearInterval(interval); interval = null; }
+  }
+  btn.addEventListener('mousedown', start);
+  btn.addEventListener('touchstart', start, { passive: false });
+  btn.addEventListener('mouseup', stop);
+  btn.addEventListener('mouseleave', stop);
+  btn.addEventListener('touchend', stop);
+  btn.addEventListener('touchcancel', stop);
+}
 function editGameClock() {
   editingEventId = null;
   document.getElementById('timeModalTitle').textContent = 'Set Game Clock';
@@ -1235,7 +1272,7 @@ function computeStats() {
     off_reb: 0, def_reb: 0,
     steal: 0, block: 0,
     assist_2: 0, assist_3: 0,
-    chicken_out: 0, box_out: 0,
+    chicken_out: 0, box_out: 0, no_box_out: 0, deflection: 0,
     lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0,
     to_pass: 0, to_handle: 0, to_swiped: 0,
     ptsa_1: 0, ptsa_2: 0, ptsa_3: 0,
@@ -1271,6 +1308,8 @@ function computeStats() {
       case 'assist_3': s.assist_3++; break;
       case 'chicken_out': s.chicken_out++; break;
       case 'box_out': s.box_out++; break;
+      case 'no_box_out': s.no_box_out++; break;
+      case 'deflection': s.deflection++; break;
       case 'lazy_d': s.lazy_d++; break;
       case 'bad_pos': s.bad_pos++; break;
       case 'blow_by': s.blow_by++; break;
@@ -1327,9 +1366,11 @@ function renderStats() {
     { cls: 'reb', label: 'Rebounds', value: s.reb_total, detail: `${s.off_reb} off · ${s.def_reb} def` },
     { cls: 'stl', label: 'Steals', value: s.steal, detail: '&nbsp;' },
     { cls: 'block', label: 'Blocks', value: s.block, detail: '&nbsp;' },
+    { cls: 'stl', label: 'Deflections', value: s.deflection, detail: '&nbsp;' },
     { cls: 'to', label: 'Turnovers', value: s.to_total, detail: `${s.to_pass} pass · ${s.to_handle} handle · ${s.to_swiped} swiped` },
     { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yelled` },
     { cls: 'made', label: 'Box Outs', value: s.box_out, detail: '&nbsp;' },
+    { cls: 'miss', label: 'No Box Outs', value: s.no_box_out, detail: '&nbsp;' },
     { cls: 'miss', label: 'Chicken Outs', value: s.chicken_out, detail: '&nbsp;' },
   ];
   const html = cards.map(c => `
@@ -1361,9 +1402,10 @@ function renderLog() {
         <button class="log-nudge" data-nudge="${ev.id}" data-delta="-5" title="Roll back 5 seconds">−5</button>
         <button class="log-nudge" data-nudge="${ev.id}" data-delta="5" title="Roll forward 5 seconds">+5</button>
         <span class="log-time-stack">
-          <span class="log-time mono" data-edit-time="${ev.id}" title="Edit film time">${filmT}</span>
+          <span class="log-time mono" data-seek="${ev.filmTimeSec || 0}" title="Jump video to this moment">${filmT}</span>
           <span class="game-time mono" title="Game clock">${gameT}</span>
         </span>
+        <button class="log-edit" data-edit-time="${ev.id}" title="Edit recorded time">✎</button>
         <button class="log-del" data-del="${ev.id}" title="Delete">×</button>
       </div>
     `;
@@ -1436,9 +1478,11 @@ function exportCSV() {
   rows.push(['Rebounds', s.reb_total, `${s.off_reb} off / ${s.def_reb} def`]);
   rows.push(['Steals', s.steal]);
   rows.push(['Blocks', s.block]);
+  rows.push(['Deflections', s.deflection]);
   rows.push(['Turnovers', s.to_total, `${s.to_pass} pass / ${s.to_handle} handle / ${s.to_swiped} swiped`]);
   rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at`]);
   rows.push(['Box Outs', s.box_out]);
+  rows.push(['No Box Outs', s.no_box_out]);
   rows.push(['Chicken Outs', s.chicken_out]);
 
   const csv = rows.map(r => r.map(c => {
@@ -1489,9 +1533,10 @@ const VOICE_PATTERNS = [
   // Rebounds
   { test: /\b(off(ensive)? (board|rebound)|off ?reb|o ?reb)\b/, action: () => logEvent('off_reb') },
   { test: /\b(def(ensive)? (board|rebound)|def ?reb|d ?reb)\b/, action: () => logEvent('def_reb') },
-  // Steal & block
+  // Steal, block & deflection
   { test: /\bsteal\b/, action: () => logEvent('steal') },
   { test: /\b(block|rejection|swat)\b/, action: () => logEvent('block') },
+  { test: /\b(deflection|deflected|tipped|tip away)\b/, action: () => logEvent('deflection') },
   // Defense issues
   { test: /\b(lazy|loafing|jogging back)\b/, action: () => logEvent('lazy_d') },
   { test: /\b(bad position|out of position|wrong spot|caught watching)\b/, action: () => logEvent('bad_pos') },
@@ -1500,6 +1545,7 @@ const VOICE_PATTERNS = [
   // Habits
   { test: /\b(chicken out|chickened out|shied away|shy of contact|avoided contact)\b/, action: () => logEvent('chicken_out') },
   { test: /\b(box out|boxed out|box him out|box her out|good box)\b/, action: () => logEvent('box_out') },
+  { test: /\b(no box out|didn'?t box out|missed (the )?box out|failed (to )?box out)\b/, action: () => logEvent('no_box_out') },
   // Turnovers
   { test: /\b(bad pass|picked off|intercepted)\b/, action: () => logEvent('to_pass') },
   { test: /\b(lost (it|handle|the ball|her dribble)|fumbled|dribble off)\b/, action: () => logEvent('to_handle') },
@@ -1652,6 +1698,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('gameClockToggle').addEventListener('click', toggleGameClock);
   document.getElementById('gameClockReset').addEventListener('click', resetGameClock);
   document.getElementById('gameClockTime').addEventListener('click', editGameClock);
+  setupHoldRepeat('gameClockUp', () => bumpGameClock(1));
+  setupHoldRepeat('gameClockDown', () => bumpGameClock(-1));
 
   // Film clock — tap to seek the video to a given time
   document.getElementById('filmTime').addEventListener('click', () => {
@@ -1673,8 +1721,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('voiceBtn').addEventListener('click', () => voiceOn ? stopVoice() : startVoice());
   document.getElementById('undoBtn').addEventListener('click', undoLast);
 
-  // Log delegation: nudge, edit time, delete
+  // Log delegation: seek, nudge, edit time, delete
   document.getElementById('logBody').addEventListener('click', (e) => {
+    const seekBtn = e.target.closest('[data-seek]');
+    if (seekBtn) {
+      if (video.type === null) { toast('Load a video first', 'error'); return; }
+      const sec = parseFloat(seekBtn.dataset.seek);
+      if (!isNaN(sec)) {
+        videoSeek(sec);
+        videoPlay();
+        filmTimeSec = sec;
+        updateFilmClock();
+      }
+      return;
+    }
     const nudgeBtn = e.target.closest('[data-nudge]');
     if (nudgeBtn) {
       const delta = parseInt(nudgeBtn.dataset.delta, 10);
@@ -1843,7 +1903,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'q': 'block',
       'a': 'off_reb', 's': 'def_reb',
       'd': 'steal',
-      'h': 'chicken_out', 'j': 'box_out',
+      'h': 'chicken_out', 'j': 'box_out', 'k': 'no_box_out', 'l': 'deflection',
       'z': 'lazy_d', 'x': 'bad_pos', 'c': 'blow_by', 'v': 'yelled_at',
       'b': 'to_pass', 'n': 'to_handle', 'm': 'to_swiped',
       '1': 'ptsa_1', '2': 'ptsa_2', '3': 'ptsa_3',
