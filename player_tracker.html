@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Player Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0e;
+    --surface: #14161c;
+    --surface-2: #1c1f27;
+    --surface-3: #262a34;
+    --border: #2a2e38;
+    --text: #f1f3f5;
+    --text-dim: #8a8f9c;
+    --text-faint: #5a5f6b;
+    --accent: #f97316;
+    --made: #22c55e;
+    --miss: #f59e0b;
+    --turnover: #ef4444;
+    --steal: #06b6d4;
+    --rebound: #8b5cf6;
+    --defense: #3b82f6;
+    --block: #14b8a6;
+    --listening: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; overscroll-behavior: none; }
+  body { min-height: 100vh; }
+  h1, h2, h3, .display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.04em; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* Two-column layout: video left, tracker right */
+  .app { display: flex; min-height: 100vh; }
+  .video-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #000; border-right: 1px solid var(--border); }
+  .video-controls { background: var(--surface); padding: 8px 10px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+  .vid-mode-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: 'Outfit'; font-size: 11px; letter-spacing: 0.06em; }
+  .vid-mode-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .vid-pick-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 6px; cursor: pointer; font-family: 'Outfit'; font-size: 11px; }
+  .vid-pick-btn:active { background: var(--surface-3); }
+  .vid-url-input { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 6px; font-family: 'Outfit'; font-size: 11px; flex: 1; min-width: 180px; }
+  .vid-url-input:focus { outline: none; border-color: var(--accent); }
+  .video-stage { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-height: 0; position: relative; }
+  .video-stage video { width: 100%; height: 100%; max-width: 100%; max-height: 100%; object-fit: contain; }
+  .video-stage iframe, .video-stage #ytPlayerDiv { width: 100%; height: 100%; border: 0; }
+  .video-empty { color: var(--text-faint); font-size: 13px; text-align: center; font-style: italic; padding: 40px; line-height: 1.6; }
+  .video-stage.dragover { outline: 2px dashed var(--accent); outline-offset: -8px; }
+
+  .tracker-panel { width: 320px; flex: 0 0 320px; padding: 8px 10px; padding-bottom: env(safe-area-inset-bottom, 12px); overflow-y: auto; max-height: 100vh; background: var(--bg); }
+
+  /* Header */
+  .header { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .game-name { background: transparent; border: none; color: var(--text); font-family: 'Bebas Neue'; font-size: 20px; letter-spacing: 0.04em; padding: 2px 0; outline: none; min-width: 0; width: 100%; }
+  .game-name:focus { color: var(--accent); }
+  .menu-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); width: 34px; height: 34px; border-radius: 8px; font-size: 18px; line-height: 1; cursor: pointer; }
+  .menu-btn:active { background: var(--surface-3); }
+
+  /* Dual clocks */
+  .clocks-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .clock-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .clock-box.film { border-color: rgba(249, 115, 22, 0.3); }
+  .clock-box.game { border-color: rgba(59, 130, 246, 0.3); }
+  .clock-box .clock-label { font-family: 'Bebas Neue'; font-size: 10px; letter-spacing: 0.18em; color: var(--text-faint); }
+  .clock-box .clock-time { font-family: 'JetBrains Mono'; font-size: 18px; font-weight: 700; color: var(--text); padding: 2px 6px; border-radius: 4px; cursor: pointer; user-select: none; }
+  .clock-box.film .clock-time { color: var(--accent); }
+  .clock-box.game .clock-time { color: var(--defense); }
+  .clock-box .clock-time.running { color: var(--made); }
+  .clock-box .clock-controls { display: flex; gap: 4px; margin-top: 2px; }
+  .clock-ctrl { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); width: 26px; height: 22px; border-radius: 4px; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; }
+  .clock-ctrl:active { background: var(--surface-3); color: var(--text); }
+
+  /* Period selector */
+  .period-row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 8px; }
+  .period-select { display: flex; gap: 2px; }
+  .period-btn { flex: 1; background: transparent; border: none; color: var(--text-dim); font-family: 'Bebas Neue'; font-size: 13px; padding: 5px 4px; border-radius: 6px; cursor: pointer; letter-spacing: 0.05em; }
+  .period-btn.active { background: var(--accent); color: #fff; }
+
+  /* On/Off toggle */
+  .on-off-row { margin-bottom: 8px; }
+  .on-off-toggle { width: 100%; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 10px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; font-family: 'Bebas Neue'; transition: all 0.15s; }
+  .on-off-toggle.on { background: rgba(34, 197, 94, 0.10); border-color: var(--made); }
+  .on-off-toggle.off { background: var(--surface); border-color: var(--text-faint); }
+  .on-off-toggle .on-off-state { font-size: 16px; letter-spacing: 0.1em; }
+  .on-off-toggle.on .on-off-state { color: var(--made); }
+  .on-off-toggle.off .on-off-state { color: var(--text-faint); }
+  .on-off-toggle .on-off-times { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-dim); letter-spacing: 0; }
+
+  /* Action sections */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+  .section-label { font-family: 'Bebas Neue'; font-size: 12px; letter-spacing: 0.18em; color: var(--text-faint); margin-bottom: 6px; padding-left: 2px; }
+  .btn-grid { display: grid; gap: 6px; }
+  .btn-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+  .btn-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .action-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 10px 6px; border-radius: 8px; font-family: 'Bebas Neue'; font-size: 14px; letter-spacing: 0.05em; cursor: pointer; transition: transform 0.08s, background 0.15s, opacity 0.15s; min-height: 46px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: relative; overflow: hidden; }
+  .action-btn .sub { font-family: 'Outfit'; font-size: 9px; font-weight: 500; letter-spacing: 0.08em; color: var(--text-faint); text-transform: uppercase; }
+  .action-btn:active { transform: scale(0.96); }
+  .action-btn.made { border-color: rgba(34, 197, 94, 0.4); }
+  .action-btn.made:active { background: rgba(34, 197, 94, 0.2); }
+  .action-btn.miss { border-color: rgba(245, 158, 11, 0.4); }
+  .action-btn.miss:active { background: rgba(245, 158, 11, 0.2); }
+  .action-btn.reb { border-color: rgba(139, 92, 246, 0.4); }
+  .action-btn.reb:active { background: rgba(139, 92, 246, 0.2); }
+  .action-btn.def { border-color: rgba(59, 130, 246, 0.4); }
+  .action-btn.def:active { background: rgba(59, 130, 246, 0.2); }
+  .action-btn.to { border-color: rgba(239, 68, 68, 0.4); }
+  .action-btn.to:active { background: rgba(239, 68, 68, 0.2); }
+  .action-btn.stl { border-color: rgba(6, 182, 212, 0.4); }
+  .action-btn.stl:active { background: rgba(6, 182, 212, 0.2); }
+  .action-btn.block { border-color: rgba(20, 184, 166, 0.5); background: rgba(20, 184, 166, 0.05); }
+  .action-btn.block:active { background: rgba(20, 184, 166, 0.25); }
+  .action-btn.assist { border-color: rgba(34, 197, 94, 0.5); background: rgba(34, 197, 94, 0.05); }
+  .action-btn.assist:active { background: rgba(34, 197, 94, 0.25); }
+  .action-btn.habit { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.05); }
+  .action-btn.habit:active { background: rgba(245, 158, 11, 0.25); }
+  .action-btn.ptsa.p1 { border-color: rgba(34, 197, 94, 0.5); }
+  .action-btn.ptsa.p1:active { background: rgba(34, 197, 94, 0.25); }
+  .action-btn.ptsa.p2 { border-color: rgba(245, 158, 11, 0.5); }
+  .action-btn.ptsa.p2:active { background: rgba(245, 158, 11, 0.25); }
+  .action-btn.ptsa.p3 { border-color: rgba(239, 68, 68, 0.5); }
+  .action-btn.ptsa.p3:active { background: rgba(239, 68, 68, 0.25); }
+  .action-btn.ptsa.faded { opacity: 0.35; }
+
+  /* Compact shooting buttons (half height) */
+  .action-btn.shot { min-height: 24px; padding: 5px 4px; font-size: 13px; }
+  .action-btn.shot .sub { font-size: 8px; margin-top: 1px; }
+  .action-btn.shot.good { border-color: rgba(34, 197, 94, 0.6); background: rgba(34, 197, 94, 0.10); }
+  .action-btn.shot.good:active { background: rgba(34, 197, 94, 0.30); }
+  .action-btn.shot.bad { border-color: rgba(245, 158, 11, 0.6); background: rgba(245, 158, 11, 0.10); }
+  .action-btn.shot.bad:active { background: rgba(245, 158, 11, 0.30); }
+  .action-btn.shot.stupid { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.10); }
+  .action-btn.shot.stupid:active { background: rgba(239, 68, 68, 0.30); }
+
+  /* Voice + Undo bar */
+  .control-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .ctrl-btn { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 8px; font-family: 'Bebas Neue'; font-size: 13px; letter-spacing: 0.06em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .ctrl-btn:active { background: var(--surface-2); }
+  .ctrl-btn .ico { font-size: 13px; }
+  .ctrl-btn.voice.on { background: rgba(34, 197, 94, 0.12); border-color: var(--listening); color: var(--listening); }
+  .ctrl-btn.voice.on .ico { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(1.15); } }
+
+  /* Stats */
+  .stats { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat-card { background: var(--surface-2); border-radius: 8px; padding: 6px 8px; }
+  .stat-card .label { font-family: 'Outfit'; font-size: 9px; font-weight: 500; letter-spacing: 0.12em; color: var(--text-faint); text-transform: uppercase; margin-bottom: 2px; }
+  .stat-card .value { font-family: 'Bebas Neue'; font-size: 20px; line-height: 1; letter-spacing: 0.03em; }
+  .stat-card .detail { font-family: 'JetBrains Mono'; font-size: 9px; color: var(--text-dim); margin-top: 2px; }
+  .stat-card.made .value { color: var(--made); }
+  .stat-card.miss .value { color: var(--miss); }
+  .stat-card.to .value { color: var(--turnover); }
+  .stat-card.stl .value { color: var(--steal); }
+  .stat-card.reb .value { color: var(--rebound); }
+  .stat-card.def .value { color: var(--defense); }
+  .stat-card.block .value { color: var(--block); }
+  .stat-card.ptsc .value { color: var(--accent); }
+
+  /* Log */
+  .log { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; }
+  .log-header { padding: 8px 10px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  .log-empty { padding: 18px; text-align: center; color: var(--text-faint); font-style: italic; font-size: 12px; }
+  .log-item { padding: 6px 8px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 22px 1fr auto auto auto auto; gap: 4px; align-items: center; font-size: 11px; }
+  .log-item:last-child { border-bottom: none; }
+  .log-period { font-family: 'Bebas Neue'; font-size: 11px; color: var(--text-faint); letter-spacing: 0.04em; }
+  .log-type { color: var(--text); font-weight: 500; font-size: 11px; line-height: 1.2; }
+  .log-time-stack { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; min-width: 48px; }
+  .log-time { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent); cursor: pointer; padding: 1px 3px; border-radius: 3px; }
+  .log-time:hover { background: var(--surface-2); }
+  .log-time-stack .game-time { font-family: 'JetBrains Mono'; font-size: 9px; color: var(--defense); padding: 1px 3px; }
+  .log-nudge { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-dim); font-size: 9px; padding: 2px 4px; border-radius: 3px; cursor: pointer; font-family: 'JetBrains Mono'; min-width: 22px; }
+  .log-nudge:hover { color: var(--text); background: var(--surface-3); }
+  .log-del { background: transparent; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px; border-radius: 3px; font-size: 14px; }
+  .log-del:hover { color: var(--turnover); }
+
+  /* Voice transcript indicator */
+  .voice-status { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; font-size: 11px; color: var(--text-dim); display: none; align-items: center; gap: 6px; }
+  .voice-status.show { display: flex; }
+  .voice-status .heard { color: var(--text); font-family: 'JetBrains Mono'; font-size: 10px; flex: 1; overflow: hidden; }
+  .voice-status .last { color: var(--made); font-size: 11px; font-weight: 600; }
+
+  /* Modal */
+  .modal-bg { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; backdrop-filter: blur(4px); }
+  .modal-bg.show { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; max-width: 480px; width: 100%; max-height: 85vh; overflow-y: auto; }
+  .modal h2 { font-size: 22px; margin-bottom: 12px; color: var(--accent); }
+  .modal h3 { font-size: 14px; margin: 14px 0 6px; color: var(--text-dim); letter-spacing: 0.1em; }
+  .modal-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 10px; border-radius: 8px; font-family: 'Outfit'; font-size: 13px; margin-bottom: 6px; }
+  .modal-input:focus { outline: none; border-color: var(--accent); }
+  .modal-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .modal-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family: 'Outfit'; font-weight: 500; font-size: 12px; cursor: pointer; flex: 1; min-width: 80px; }
+  .modal-btn:hover { background: var(--surface-3); }
+  .modal-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .modal-btn.danger { color: var(--turnover); }
+  .game-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; margin-bottom: 12px; }
+  .game-item { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; background: var(--surface-2); padding: 8px 10px; border-radius: 8px; font-size: 12px; }
+  .game-item:hover { background: var(--surface-3); }
+  .game-item.active { border: 1px solid var(--accent); }
+  .game-item .name { font-weight: 500; }
+  .game-item .meta { font-family: 'JetBrains Mono'; font-size: 10px; color: var(--text-dim); }
+  .game-item .del { background: transparent; border: none; color: var(--text-faint); cursor: pointer; padding: 4px 6px; }
+  .game-item .del:hover { color: var(--turnover); }
+  .voice-help { font-size: 11px; color: var(--text-dim); line-height: 1.6; }
+  .voice-help code { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; font-family: 'JetBrains Mono'; font-size: 10px; color: var(--accent); }
+  .settings-row { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .settings-row label { color: var(--text-dim); font-size: 12px; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--surface-3); color: var(--text); padding: 10px 18px; border-radius: 10px; font-size: 13px; border: 1px solid var(--border); z-index: 200; opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: var(--made); }
+  .toast.error { border-color: var(--turnover); }
+
+  /* Narrow / mobile fallback: stack vertically */
+  @media (max-width: 720px) {
+    .app { flex-direction: column; }
+    .video-panel { height: 45vh; border-right: none; border-bottom: 1px solid var(--border); }
+    .tracker-panel { width: 100%; flex: 1 1 auto; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========== VIDEO PANEL ========== -->
+  <div class="video-panel">
+    <div class="video-controls">
+      <button class="vid-mode-btn active" data-mode="local" id="modeLocalBtn">LOCAL</button>
+      <button class="vid-mode-btn" data-mode="youtube" id="modeYtBtn">YOUTUBE</button>
+      <input type="file" id="localFile" accept="video/*" style="display:none">
+      <button class="vid-pick-btn" id="pickLocalBtn">Choose mp4 / drop file</button>
+      <input type="text" class="vid-url-input" id="ytUrlInput" placeholder="YouTube URL or 11-char video ID" style="display:none">
+      <button class="vid-pick-btn" id="loadYtBtn" style="display:none">Load</button>
+    </div>
+    <div class="video-stage" id="videoStage">
+      <div class="video-empty">Pick an mp4 file to start.<br>Or switch to YouTube and paste a URL.</div>
+    </div>
+  </div>
+
+  <!-- ========== TRACKER PANEL ========== -->
+  <div class="tracker-panel">
+
+    <div class="header">
+      <input class="game-name" id="gameName" type="text" placeholder="Game name…" maxlength="60">
+      <button class="menu-btn" id="menuBtn" title="Menu">≡</button>
+    </div>
+
+    <div class="clocks-row">
+      <div class="clock-box film">
+        <div class="clock-label">FILM</div>
+        <div class="clock-time mono" id="filmTime" title="Tap to seek video">00:00</div>
+      </div>
+      <div class="clock-box game">
+        <div class="clock-label">GAME</div>
+        <div class="clock-time mono" id="gameClockTime" title="Tap to edit">08:00</div>
+        <div class="clock-controls">
+          <button class="clock-ctrl" id="gameClockToggle" title="Play/Pause">▶</button>
+          <button class="clock-ctrl" id="gameClockReset" title="Reset to period length">↺</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="period-row">
+      <div class="period-select" id="periodSelect">
+        <button class="period-btn active" data-period="Q1">Q1</button>
+        <button class="period-btn" data-period="Q2">Q2</button>
+        <button class="period-btn" data-period="Q3">Q3</button>
+        <button class="period-btn" data-period="Q4">Q4</button>
+        <button class="period-btn" data-period="OT">OT</button>
+      </div>
+    </div>
+
+    <div class="on-off-row">
+      <button class="on-off-toggle off" id="onOffToggle">
+        <span class="on-off-state">OFF FLOOR</span>
+        <span class="on-off-times">On 00:00 · Off 00:00</span>
+      </button>
+    </div>
+
+    <div class="voice-status" id="voiceStatus">
+      <span class="heard" id="voiceHeard">Listening…</span>
+      <span class="last" id="voiceLast"></span>
+    </div>
+
+    <div class="section">
+      <div class="section-label">2PT Made</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn shot good" data-action="made_2_good">Good<span class="sub">+2 Made</span></button>
+        <button class="action-btn shot bad" data-action="made_2_bad">Bad<span class="sub">+2 Made</span></button>
+        <button class="action-btn shot stupid" data-action="made_2_stupid">Stupid<span class="sub">+2 Made</span></button>
+      </div>
+      <div class="section-label" style="margin-top: 8px;">2PT Missed</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn shot good" data-action="missed_2_good">Good<span class="sub">+2 Miss</span></button>
+        <button class="action-btn shot bad" data-action="missed_2_bad">Bad<span class="sub">+2 Miss</span></button>
+        <button class="action-btn shot stupid" data-action="missed_2_stupid">Stupid<span class="sub">+2 Miss</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">3PT Made</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn shot good" data-action="made_3_good">Good<span class="sub">+3 Made</span></button>
+        <button class="action-btn shot bad" data-action="made_3_bad">Bad<span class="sub">+3 Made</span></button>
+        <button class="action-btn shot stupid" data-action="made_3_stupid">Stupid<span class="sub">+3 Made</span></button>
+      </div>
+      <div class="section-label" style="margin-top: 8px;">3PT Missed</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn shot good" data-action="missed_3_good">Good<span class="sub">+3 Miss</span></button>
+        <button class="action-btn shot bad" data-action="missed_3_bad">Bad<span class="sub">+3 Miss</span></button>
+        <button class="action-btn shot stupid" data-action="missed_3_stupid">Stupid<span class="sub">+3 Miss</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Free Throws</div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn made shot" data-action="made_ft">Made<span class="sub">+1 FT</span></button>
+        <button class="action-btn miss shot" data-action="missed_ft">Missed<span class="sub">+1 FT</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Assists</div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn assist" data-action="assist_2">Assist<span class="sub">→ +2</span></button>
+        <button class="action-btn assist" data-action="assist_3">Assist<span class="sub">→ +3</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Rebounds, Steals &amp; Blocks</div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn reb" data-action="off_reb">Off<span class="sub">Rebound</span></button>
+        <button class="action-btn reb" data-action="def_reb">Def<span class="sub">Rebound</span></button>
+        <button class="action-btn stl" data-action="steal">Steal</button>
+        <button class="action-btn block" data-action="block">Block</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Habits</div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn habit" data-action="chicken_out">Chicken<span class="sub">Out</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Defense Issues</div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn def" data-action="lazy_d">Lazy<span class="sub">Transition D</span></button>
+        <button class="action-btn def" data-action="bad_pos">Bad<span class="sub">Position</span></button>
+        <button class="action-btn def" data-action="blow_by">Blow<span class="sub">By</span></button>
+        <button class="action-btn def" data-action="yelled_at">Yelled<span class="sub">At by Coach</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Turnovers</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn to" data-action="to_pass">Bad<span class="sub">Pass</span></button>
+        <button class="action-btn to" data-action="to_handle">Lost<span class="sub">Handle</span></button>
+        <button class="action-btn to" data-action="to_swiped">Ball<span class="sub">Swiped</span></button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">PTSA — Points Against</div>
+      <div class="btn-grid cols-3">
+        <button class="action-btn ptsa p1" data-action="ptsa_1">+1<span class="sub">PTSA</span></button>
+        <button class="action-btn ptsa p2" data-action="ptsa_2">+2<span class="sub">PTSA</span></button>
+        <button class="action-btn ptsa p3" data-action="ptsa_3">+3<span class="sub">PTSA</span></button>
+      </div>
+    </div>
+
+    <div class="control-bar">
+      <button class="ctrl-btn voice" id="voiceBtn"><span class="ico">🎙</span><span id="voiceLabel">Voice Off</span></button>
+      <button class="ctrl-btn" id="undoBtn"><span class="ico">↶</span>Undo Last</button>
+    </div>
+
+    <div class="stats">
+      <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <div class="log">
+      <div class="log-header">
+        <span class="display" style="font-size: 14px; letter-spacing: 0.1em;">Event Log</span>
+        <span class="mono" id="logCount" style="font-size: 10px; color: var(--text-dim);">0 events</span>
+      </div>
+      <div id="logBody"></div>
+    </div>
+
+  </div><!-- /tracker-panel -->
+
+</div><!-- /app -->
+
+<!-- Menu Modal -->
+<div class="modal-bg" id="menuModal">
+  <div class="modal">
+    <h2>Menu</h2>
+    <h3>Game Settings</h3>
+    <div class="settings-row">
+      <label for="periodLengthInput">Period length</label>
+      <input class="modal-input mono" id="periodLengthInput" type="text" placeholder="MM:SS" pattern="[0-9]{1,3}:[0-9]{2}" style="margin-bottom: 0;">
+    </div>
+    <div class="settings-row">
+      <label for="voiceAutoResume">Auto-resume voice on page load</label>
+      <input id="voiceAutoResume" type="checkbox" style="justify-self: start;">
+    </div>
+    <h3>Backup &amp; Restore</h3>
+    <div class="modal-btn-row">
+      <button class="modal-btn" id="exportBackupBtn">Export Backup (JSON)</button>
+      <input type="file" id="importBackupFile" accept="application/json,.json" style="display:none">
+      <button class="modal-btn" id="importBackupBtn">Restore from Backup</button>
+    </div>
+    <div style="font-size: 11px; color: var(--text-faint); margin-top: 6px; line-height: 1.5;">
+      Games live in this browser only. Use the JSON backup to move data to another device or browser.
+    </div>
+    <h3>Games</h3>
+    <div class="game-list" id="gameList"></div>
+    <div class="modal-btn-row">
+      <button class="modal-btn primary" id="newGameBtn">New Game</button>
+      <button class="modal-btn" id="exportBtn">Export CSV</button>
+    </div>
+    <h3>Voice Commands</h3>
+    <div class="voice-help">
+      Say short phrases. The recogniser listens continuously when toggled on.
+      <br><br>
+      Shooting: <code>good made two</code> · <code>bad missed three</code> · <code>stupid made three</code> · <code>brick</code> (logs stupid 3pt miss)
+      <br>
+      Free Throws: <code>made one</code> · <code>missed free throw</code>
+      <br>
+      Assists: <code>assist two</code> · <code>assist three</code>
+      <br>
+      Rebounds &amp; Blocks: <code>off board</code> · <code>def board</code> · <code>block</code>
+      <br>
+      Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code>
+      <br>
+      Habits: <code>chicken out</code> · <code>shied away</code>
+      <br>
+      Turnovers: <code>bad pass</code> · <code>lost handle</code> · <code>ball swiped</code>
+      <br>
+      PTSA: <code>they scored two</code> · <code>p t s a three</code>
+      <br>
+      On/Off floor: <code>sub in</code> · <code>sub out</code>
+      <br>
+      Game clock: <code>start clock</code> · <code>stop clock</code> · <code>reset clock</code>
+      <br>
+      Film: <code>play film</code> · <code>pause film</code>
+      <br>
+      Other: <code>undo</code>
+      <br><br>
+      <strong style="color: var(--miss);">Note:</strong> Voice works on Chrome (desktop &amp; Android). iPhone Safari does not reliably support continuous recognition — use taps on iOS.
+    </div>
+    <h3 style="color: var(--turnover);">Danger Zone</h3>
+    <div class="modal-btn-row">
+      <button class="modal-btn danger" id="clearGameBtn">Clear This Game's Events</button>
+    </div>
+    <div class="modal-btn-row" style="margin-top: 16px;">
+      <button class="modal-btn" id="closeMenu">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Time Modal -->
+<div class="modal-bg" id="timeModal">
+  <div class="modal">
+    <h2 id="timeModalTitle">Edit Time</h2>
+    <input class="modal-input mono" id="timeInput" type="text" placeholder="MM:SS" pattern="[0-9]{1,3}:[0-9]{2}">
+    <div class="modal-btn-row">
+      <button class="modal-btn primary" id="timeSave">Save</button>
+      <button class="modal-btn" id="timeCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+const ACTION_DEFS = {
+  // 2PT (quality-graded)
+  made_2_good:     { label: 'Good +2 Made',     category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'good' },
+  made_2_bad:      { label: 'Bad +2 Made',      category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'bad' },
+  made_2_stupid:   { label: 'Stupid +2 Made',   category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'stupid' },
+  missed_2_good:   { label: 'Good +2 Miss',     category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'good' },
+  missed_2_bad:    { label: 'Bad +2 Miss',      category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'bad' },
+  missed_2_stupid: { label: 'Stupid +2 Miss',   category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'stupid' },
+  // 3PT (quality-graded)
+  made_3_good:     { label: 'Good +3 Made',     category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'good' },
+  made_3_bad:      { label: 'Bad +3 Made',      category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'bad' },
+  made_3_stupid:   { label: 'Stupid +3 Made',   category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'stupid' },
+  missed_3_good:   { label: 'Good +3 Miss',     category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'good' },
+  missed_3_bad:    { label: 'Bad +3 Miss',      category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'bad' },
+  missed_3_stupid: { label: 'Stupid +3 Miss',   category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'stupid' },
+  // FT
+  made_ft:   { label: '+1 Made FT',      category: 'shoot', pts: 1 },
+  missed_ft: { label: '+1 Missed FT',    category: 'shoot', pts: 0 },
+  // Assists
+  assist_2:  { label: 'Assist → +2',     category: 'ast' },
+  assist_3:  { label: 'Assist → +3',     category: 'ast' },
+  // Rebounds, steals & blocks
+  off_reb:   { label: 'Off Rebound',     category: 'reb' },
+  def_reb:   { label: 'Def Rebound',     category: 'reb' },
+  steal:     { label: 'Steal',           category: 'stl' },
+  block:     { label: 'Block',           category: 'block' },
+  // Defense issues
+  lazy_d:    { label: 'Lazy Transition', category: 'def' },
+  bad_pos:   { label: 'Bad Position',    category: 'def' },
+  blow_by:   { label: 'Blow By',         category: 'def' },
+  yelled_at: { label: 'Yelled At',       category: 'def' },
+  // Habits
+  chicken_out: { label: 'Chicken Out',   category: 'habit' },
+  // Turnovers
+  to_pass:   { label: 'Bad Pass TO',     category: 'to' },
+  to_handle: { label: 'Lost Handle TO',  category: 'to' },
+  to_swiped: { label: 'Ball Swiped TO',  category: 'to' },
+  // PTSA — points against
+  ptsa_1:    { label: '+1 PTSA',         category: 'ptsa', ptsa: 1 },
+  ptsa_2:    { label: '+2 PTSA',         category: 'ptsa', ptsa: 2 },
+  ptsa_3:    { label: '+3 PTSA',         category: 'ptsa', ptsa: 3 },
+  // Floor
+  sub_in:    { label: 'Sub In (on floor)',  category: 'meta' },
+  sub_out:   { label: 'Sub Out (off floor)', category: 'meta' },
+};
+
+let game = null;
+let games = [];
+let filmTimeSec = 0;
+let gameClockSec = 480;
+let gameClockRunning = false;
+let gameClockInterval = null;
+let periodLengthSec = 480;
+let recognition = null;
+let voiceOn = false;
+let editingEventId = null;     // null = edit game clock; '__period__' = edit period length; otherwise event id
+
+// Video player state (unified across local + YouTube)
+let video = { type: null, el: null, ytPlayer: null, intervalId: null };
+let ytApiReady = false;
+let ytApiCallbacks = [];
+
+// ============================================================
+// Storage helpers
+// ============================================================
+const KEY_INDEX = 'tracker:games';
+const KEY_CURRENT = 'tracker:current';
+const keyGame = id => `tracker:game:${id}`;
+
+// Persistence is now backed by browser localStorage.
+// Survives page reloads, browser restarts, and OS reboots.
+// Per-browser per-origin — i.e., each device has its own data.
+// Use the JSON backup/import in the Menu to move data between devices.
+async function safeGet(key, fallback = null) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v == null) return fallback;
+    try { return JSON.parse(v); } catch { return v; }
+  } catch (e) { return fallback; }
+}
+async function safeSet(key, value) {
+  try {
+    const v = typeof value === 'string' ? value : JSON.stringify(value);
+    localStorage.setItem(key, v);
+    return true;
+  } catch (e) { return false; }
+}
+async function safeDelete(key) {
+  try { localStorage.removeItem(key); } catch (e) {}
+}
+
+// Settings (small persisted prefs not tied to a specific game)
+const KEY_SETTINGS = 'tracker:settings';
+async function getSetting(name, fallback) {
+  const s = (await safeGet(KEY_SETTINGS, {})) || {};
+  return name in s ? s[name] : fallback;
+}
+async function setSetting(name, value) {
+  const s = (await safeGet(KEY_SETTINGS, {})) || {};
+  s[name] = value;
+  await safeSet(KEY_SETTINGS, s);
+}
+
+// JSON backup / restore — moves data between devices/browsers.
+async function exportBackup() {
+  const out = { exportedAt: new Date().toISOString(), keys: {} };
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.indexOf('tracker:') === 0) out.keys[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `bbr_tracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Backup exported', 'success');
+}
+async function importBackup(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object' || !data.keys) throw new Error('Invalid backup file');
+    if (!confirm('Restore will overwrite current games. Continue?')) return;
+    for (const k of Object.keys(data.keys)) {
+      if (k.indexOf('tracker:') === 0) localStorage.setItem(k, data.keys[k]);
+    }
+    toast('Backup restored. Reloading…', 'success');
+    setTimeout(() => location.reload(), 800);
+  } catch (e) {
+    toast('Restore failed: ' + e.message, 'error');
+  }
+}
+
+// ============================================================
+// Game lifecycle
+// ============================================================
+function newId() { return 'g_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6); }
+
+async function loadAll() {
+  games = (await safeGet(KEY_INDEX, [])) || [];
+  let currentId = await safeGet(KEY_CURRENT, null);
+  if (!currentId || !games.find(g => g.id === currentId)) {
+    if (games.length === 0) {
+      await createGame('Game 1');
+      return;
+    }
+    currentId = games[0].id;
+    await safeSet(KEY_CURRENT, currentId);
+  }
+  game = await safeGet(keyGame(currentId), null);
+  if (!game) {
+    await createGame('Game 1');
+    return;
+  }
+  applyGameToUI();
+  render();
+}
+
+async function createGame(name) {
+  const id = newId();
+  game = {
+    id,
+    name: name || 'New Game',
+    period: 'Q1',
+    events: [],
+    createdAt: Date.now(),
+    periodLengthSec: 480
+  };
+  games.unshift({ id, name: game.name, createdAt: game.createdAt });
+  await safeSet(KEY_INDEX, games);
+  await safeSet(KEY_CURRENT, id);
+  await safeSet(keyGame(id), game);
+  applyGameToUI();
+  render();
+}
+
+async function switchGame(id) {
+  const g = await safeGet(keyGame(id), null);
+  if (!g) return;
+  game = g;
+  await safeSet(KEY_CURRENT, id);
+  applyGameToUI();
+  render();
+  closeMenu();
+  toast(`Loaded: ${g.name}`, 'success');
+}
+
+async function deleteGame(id) {
+  await safeDelete(keyGame(id));
+  games = games.filter(g => g.id !== id);
+  await safeSet(KEY_INDEX, games);
+  if (game && game.id === id) {
+    if (games.length > 0) {
+      await switchGame(games[0].id);
+    } else {
+      await createGame('Game 1');
+    }
+  }
+  renderGameList();
+}
+
+async function saveGame() {
+  if (!game) return;
+  await safeSet(keyGame(game.id), game);
+  const idx = games.find(g => g.id === game.id);
+  if (idx && idx.name !== game.name) {
+    idx.name = game.name;
+    await safeSet(KEY_INDEX, games);
+  }
+}
+
+function applyGameToUI() {
+  document.getElementById('gameName').value = game.name;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.toggle('active', b.dataset.period === game.period));
+  periodLengthSec = game.periodLengthSec || 480;
+  gameClockSec = periodLengthSec;
+  gameClockRunning = false;
+  if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
+  renderGameClock();
+  renderOnOff();
+}
+
+// ============================================================
+// Clock helpers
+// ============================================================
+function fmtClock(sec) {
+  const safe = Math.max(0, Math.floor(sec || 0));
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+function parseClock(str) {
+  const m = String(str).trim().match(/^(\d+):(\d{1,2})$/);
+  if (!m) return null;
+  const mins = parseInt(m[1], 10);
+  const secs = parseInt(m[2], 10);
+  if (secs >= 60) return null;
+  return mins * 60 + secs;
+}
+
+function renderGameClock() {
+  const el = document.getElementById('gameClockTime');
+  if (!el) return;
+  el.textContent = fmtClock(gameClockSec);
+  el.classList.toggle('running', gameClockRunning);
+  const tog = document.getElementById('gameClockToggle');
+  if (tog) tog.textContent = gameClockRunning ? '⏸' : '▶';
+}
+function toggleGameClock() {
+  gameClockRunning = !gameClockRunning;
+  if (gameClockRunning) {
+    gameClockInterval = setInterval(() => {
+      if (gameClockSec > 0) {
+        gameClockSec--;
+        renderGameClock();
+        if (gameClockSec === 0) {
+          gameClockRunning = false;
+          clearInterval(gameClockInterval);
+          buzz(200);
+          renderGameClock();
+        }
+      }
+    }, 1000);
+  } else {
+    clearInterval(gameClockInterval);
+  }
+  renderGameClock();
+}
+function resetGameClock() {
+  gameClockRunning = false;
+  if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
+  gameClockSec = periodLengthSec;
+  renderGameClock();
+}
+function editGameClock() {
+  editingEventId = null;
+  document.getElementById('timeModalTitle').textContent = 'Set Game Clock';
+  document.getElementById('timeInput').value = fmtClock(gameClockSec);
+  showModal('timeModal');
+}
+
+// ============================================================
+// Video player (local + YouTube unified)
+// ============================================================
+function loadYtApi() {
+  return new Promise((resolve, reject) => {
+    if (window.YT && window.YT.Player) { resolve(); return; }
+    if (ytApiReady) { resolve(); return; }
+    ytApiCallbacks.push(resolve);
+    if (!document.getElementById('yt-iframe-api')) {
+      const tag = document.createElement('script');
+      tag.id = 'yt-iframe-api';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      tag.onerror = () => reject(new Error('YT API load failed'));
+      document.head.appendChild(tag);
+    }
+    setTimeout(() => { if (!ytApiReady) reject(new Error('YT API timeout')); }, 8000);
+  });
+}
+window.onYouTubeIframeAPIReady = function () {
+  ytApiReady = true;
+  ytApiCallbacks.forEach(cb => cb());
+  ytApiCallbacks = [];
+};
+
+function videoCleanup() {
+  if (video.intervalId) { clearInterval(video.intervalId); video.intervalId = null; }
+  if (video.type === 'local' && video.el && video.el.src) {
+    try { URL.revokeObjectURL(video.el.src); } catch (e) {}
+  }
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.destroy) {
+    try { video.ytPlayer.destroy(); } catch (e) {}
+  }
+  video.el = null;
+  video.ytPlayer = null;
+  video.type = null;
+  const stage = document.getElementById('videoStage');
+  if (stage) stage.innerHTML = '<div class="video-empty">Pick an mp4 file to start.<br>Or switch to YouTube and paste a URL.</div>';
+}
+
+function videoCurrentTime() {
+  if (video.type === 'local' && video.el) return Math.floor(video.el.currentTime || 0);
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.getCurrentTime) {
+    try { return Math.floor(video.ytPlayer.getCurrentTime() || 0); } catch (e) { return 0; }
+  }
+  return 0;
+}
+function videoIsPlaying() {
+  if (video.type === 'local' && video.el) return !video.el.paused;
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.getPlayerState) {
+    try { return video.ytPlayer.getPlayerState() === 1; } catch (e) { return false; }
+  }
+  return false;
+}
+function videoToggle() { if (videoIsPlaying()) videoPause(); else videoPlay(); }
+function videoPlay() {
+  if (video.type === 'local' && video.el) video.el.play();
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.playVideo) video.ytPlayer.playVideo();
+}
+function videoPause() {
+  if (video.type === 'local' && video.el) video.el.pause();
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.pauseVideo) video.ytPlayer.pauseVideo();
+}
+function videoSeek(sec) {
+  if (video.type === 'local' && video.el) video.el.currentTime = Math.max(0, sec);
+  if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.seekTo) video.ytPlayer.seekTo(Math.max(0, sec), true);
+}
+
+function loadLocalVideo(file) {
+  videoCleanup();
+  const stage = document.getElementById('videoStage');
+  stage.innerHTML = '';
+  const v = document.createElement('video');
+  v.controls = true;
+  v.src = URL.createObjectURL(file);
+  stage.appendChild(v);
+  video.el = v;
+  video.type = 'local';
+  v.addEventListener('timeupdate', updateFilmClock);
+  v.addEventListener('play', updateFilmClock);
+  v.addEventListener('pause', updateFilmClock);
+  v.addEventListener('seeked', updateFilmClock);
+  v.addEventListener('loadedmetadata', updateFilmClock);
+  toast(`Loaded ${file.name}`, 'success');
+}
+
+function extractYtVideoId(input) {
+  if (!input) return null;
+  let id = input.trim();
+  const m = id.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (m) return m[1];
+  if (/^[a-zA-Z0-9_-]{11}$/.test(id)) return id;
+  return null;
+}
+
+async function loadYouTube(urlOrId) {
+  const id = extractYtVideoId(urlOrId);
+  if (!id) { toast('Invalid YouTube URL or ID', 'error'); return; }
+  try {
+    await loadYtApi();
+    videoCleanup();
+    const stage = document.getElementById('videoStage');
+    stage.innerHTML = '<div id="ytPlayerDiv"></div>';
+    video.ytPlayer = new YT.Player('ytPlayerDiv', {
+      videoId: id,
+      width: '100%', height: '100%',
+      playerVars: { rel: 0, modestbranding: 1, playsinline: 1, controls: 1 },
+      events: {
+        onReady: () => updateFilmClock(),
+        onStateChange: () => updateFilmClock(),
+        onError: (e) => toast('YouTube error code: ' + e.data, 'error')
+      }
+    });
+    video.type = 'youtube';
+    video.intervalId = setInterval(updateFilmClock, 250);
+    toast('YouTube loaded', 'success');
+  } catch (e) {
+    toast('YouTube failed to load. On file:// URLs the API is blocked — host on localhost.', 'error');
+  }
+}
+
+function updateFilmClock() {
+  filmTimeSec = videoCurrentTime();
+  const el = document.getElementById('filmTime');
+  if (el) {
+    el.textContent = fmtClock(filmTimeSec);
+    el.classList.toggle('running', videoIsPlaying());
+  }
+  renderOnOff();
+}
+
+// ============================================================
+// On / Off the floor
+// ============================================================
+function getOnOffState() {
+  if (!game || !game.events) return 'off';
+  for (let i = game.events.length - 1; i >= 0; i--) {
+    if (game.events[i].type === 'sub_in') return 'on';
+    if (game.events[i].type === 'sub_out') return 'off';
+  }
+  return 'off';
+}
+
+function getOnOffTime() {
+  if (!game || !game.events) return { onSec: 0, offSec: 0, isOn: false };
+  const events = game.events
+    .filter(e => e.type === 'sub_in' || e.type === 'sub_out')
+    .slice()
+    .sort((a, b) => (a.filmTimeSec || 0) - (b.filmTimeSec || 0));
+  let onSec = 0;
+  let lastSubIn = null;
+  for (const e of events) {
+    const t = e.filmTimeSec || 0;
+    if (e.type === 'sub_in') {
+      lastSubIn = t;
+    } else if (e.type === 'sub_out' && lastSubIn !== null) {
+      onSec += Math.max(0, t - lastSubIn);
+      lastSubIn = null;
+    }
+  }
+  const isOn = lastSubIn !== null;
+  if (isOn) onSec += Math.max(0, filmTimeSec - lastSubIn);
+  const offSec = Math.max(0, filmTimeSec - onSec);
+  return { onSec, offSec, isOn };
+}
+
+function renderOnOff() {
+  const btn = document.getElementById('onOffToggle');
+  if (!btn) return;
+  const { onSec, offSec, isOn } = getOnOffTime();
+  btn.classList.toggle('on', isOn);
+  btn.classList.toggle('off', !isOn);
+  const stateEl = btn.querySelector('.on-off-state');
+  if (stateEl) stateEl.textContent = isOn ? 'ON FLOOR' : 'OFF FLOOR';
+  const timesEl = btn.querySelector('.on-off-times');
+  if (timesEl) timesEl.textContent = `On ${fmtClock(onSec)} · Off ${fmtClock(offSec)}`;
+  document.querySelectorAll('.action-btn.ptsa').forEach(b => b.classList.toggle('faded', !isOn));
+}
+
+async function toggleOnOff() {
+  const state = getOnOffState();
+  const newType = state === 'on' ? 'sub_out' : 'sub_in';
+  await logEvent(newType);
+}
+
+// ============================================================
+// Logging events
+// ============================================================
+async function logEvent(actionType, opts = {}) {
+  if (!ACTION_DEFS[actionType]) return;
+  const def = ACTION_DEFS[actionType];
+  const ev = {
+    id: 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
+    type: actionType,
+    period: game.period,
+    filmTimeSec: filmTimeSec,
+    filmTime: fmtClock(filmTimeSec),
+    gameTimeSec: gameClockSec,
+    gameTime: fmtClock(gameClockSec),
+    loggedAt: Date.now(),
+    modifiers: {}
+  };
+  game.events.push(ev);
+  await saveGame();
+  buzz(40);
+  flashSuccess(def.label);
+  render();
+}
+
+async function undoLast() {
+  if (!game.events.length) { toast('Nothing to undo', 'error'); return; }
+  const ev = game.events.pop();
+  await saveGame();
+  buzz(60);
+  toast('Undid: ' + (ACTION_DEFS[ev.type] ? ACTION_DEFS[ev.type].label : ev.type), 'success');
+  render();
+}
+
+async function deleteEvent(id) {
+  game.events = game.events.filter(e => e.id !== id);
+  await saveGame();
+  render();
+}
+
+async function nudgeEventTime(id, deltaSec) {
+  const ev = game.events.find(e => e.id === id);
+  if (!ev) return;
+  ev.filmTimeSec = Math.max(0, (ev.filmTimeSec || 0) + deltaSec);
+  ev.filmTime = fmtClock(ev.filmTimeSec);
+  ev.gameTimeSec = Math.max(0, (ev.gameTimeSec || 0) + deltaSec);
+  ev.gameTime = fmtClock(ev.gameTimeSec);
+  await saveGame();
+  render();
+}
+
+async function editEventTime(id, newTimeStr) {
+  const sec = parseClock(newTimeStr);
+  if (sec === null) { toast('Invalid time format. Use MM:SS', 'error'); return; }
+  const ev = game.events.find(e => e.id === id);
+  if (!ev) return;
+  const oldFilm = ev.filmTimeSec || 0;
+  const delta = sec - oldFilm;
+  ev.filmTimeSec = Math.max(0, sec);
+  ev.filmTime = fmtClock(ev.filmTimeSec);
+  ev.gameTimeSec = Math.max(0, (ev.gameTimeSec || 0) + delta);
+  ev.gameTime = fmtClock(ev.gameTimeSec);
+  await saveGame();
+  render();
+}
+
+// ============================================================
+// Stats & rendering
+// ============================================================
+function computeStats() {
+  const s = {
+    fg2_made: 0, fg2_miss: 0,
+    fg3_made: 0, fg3_miss: 0,
+    ft_made: 0, ft_miss: 0,
+    good_made: 0, good_miss: 0,
+    bad_made: 0, bad_miss: 0,
+    stupid_made: 0, stupid_miss: 0,
+    off_reb: 0, def_reb: 0,
+    steal: 0, block: 0,
+    assist_2: 0, assist_3: 0,
+    chicken_out: 0,
+    lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0,
+    to_pass: 0, to_handle: 0, to_swiped: 0,
+    ptsa_1: 0, ptsa_2: 0, ptsa_3: 0,
+    points: 0
+  };
+  for (const ev of game.events) {
+    const def = ACTION_DEFS[ev.type];
+    if (!def) continue;
+    if (def.pts) s.points += def.pts;
+    if (ev.type.indexOf('made_2') === 0) s.fg2_made++;
+    else if (ev.type.indexOf('missed_2') === 0) s.fg2_miss++;
+    else if (ev.type.indexOf('made_3') === 0) s.fg3_made++;
+    else if (ev.type.indexOf('missed_3') === 0) s.fg3_miss++;
+    else if (ev.type === 'made_ft') s.ft_made++;
+    else if (ev.type === 'missed_ft') s.ft_miss++;
+    if (def.quality) {
+      if (def.isMade) {
+        if (def.quality === 'good') s.good_made++;
+        else if (def.quality === 'bad') s.bad_made++;
+        else if (def.quality === 'stupid') s.stupid_made++;
+      } else {
+        if (def.quality === 'good') s.good_miss++;
+        else if (def.quality === 'bad') s.bad_miss++;
+        else if (def.quality === 'stupid') s.stupid_miss++;
+      }
+    }
+    switch (ev.type) {
+      case 'off_reb': s.off_reb++; break;
+      case 'def_reb': s.def_reb++; break;
+      case 'steal': s.steal++; break;
+      case 'block': s.block++; break;
+      case 'assist_2': s.assist_2++; break;
+      case 'assist_3': s.assist_3++; break;
+      case 'chicken_out': s.chicken_out++; break;
+      case 'lazy_d': s.lazy_d++; break;
+      case 'bad_pos': s.bad_pos++; break;
+      case 'blow_by': s.blow_by++; break;
+      case 'yelled_at': s.yelled_at++; break;
+      case 'to_pass': s.to_pass++; break;
+      case 'to_handle': s.to_handle++; break;
+      case 'to_swiped': s.to_swiped++; break;
+      case 'ptsa_1': s.ptsa_1++; break;
+      case 'ptsa_2': s.ptsa_2++; break;
+      case 'ptsa_3': s.ptsa_3++; break;
+    }
+  }
+  s.fg2_att = s.fg2_made + s.fg2_miss;
+  s.fg3_att = s.fg3_made + s.fg3_miss;
+  s.ft_att = s.ft_made + s.ft_miss;
+  s.fg2_pct = s.fg2_att ? Math.round(100 * s.fg2_made / s.fg2_att) : 0;
+  s.fg3_pct = s.fg3_att ? Math.round(100 * s.fg3_made / s.fg3_att) : 0;
+  s.ft_pct = s.ft_att ? Math.round(100 * s.ft_made / s.ft_att) : 0;
+  s.fg_made = s.fg2_made + s.fg3_made;
+  s.fg_att = s.fg2_att + s.fg3_att;
+  s.fg_pct = s.fg_att ? Math.round(100 * s.fg_made / s.fg_att) : 0;
+  s.good_total = s.good_made + s.good_miss;
+  s.bad_total = s.bad_made + s.bad_miss;
+  s.stupid_total = s.stupid_made + s.stupid_miss;
+  s.good_pct = s.good_total ? Math.round(100 * s.good_made / s.good_total) : 0;
+  s.bad_pct = s.bad_total ? Math.round(100 * s.bad_made / s.bad_total) : 0;
+  s.stupid_pct = s.stupid_total ? Math.round(100 * s.stupid_made / s.stupid_total) : 0;
+  s.reb_total = s.off_reb + s.def_reb;
+  s.to_total = s.to_pass + s.to_handle + s.to_swiped;
+  s.def_lapses = s.lazy_d + s.bad_pos + s.blow_by + s.yelled_at;
+  s.assists_total = s.assist_2 + s.assist_3;
+  s.assist_pts = 2 * s.assist_2 + 3 * s.assist_3;
+  s.pts_created = s.points + s.assist_pts;
+  s.ptsa_total = s.ptsa_1 + 2 * s.ptsa_2 + 3 * s.ptsa_3;
+  s.ptsa_count = s.ptsa_1 + s.ptsa_2 + s.ptsa_3;
+  return s;
+}
+
+function renderStats() {
+  const s = computeStats();
+  const { onSec, offSec } = getOnOffTime();
+  const cards = [
+    { cls: 'ptsc', label: 'PTSC', value: s.pts_created, detail: `${s.points} scored · ${s.assist_pts} assisted` },
+    { cls: 'made', label: 'Points', value: s.points, detail: `${s.fg_made}/${s.fg_att} FG · ${s.ft_made}/${s.ft_att} FT` },
+    { cls: 'to', label: 'PTSA', value: s.ptsa_total, detail: `${s.ptsa_count} buckets given up` },
+    { cls: 'def', label: 'Floor Time', value: fmtClock(onSec), detail: `Off ${fmtClock(offSec)}` },
+    { cls: 'made', label: '2PT', value: `${s.fg2_made}/${s.fg2_att}`, detail: `${s.fg2_pct}%` },
+    { cls: 'miss', label: '3PT', value: `${s.fg3_made}/${s.fg3_att}`, detail: `${s.fg3_pct}%` },
+    { cls: 'made', label: 'FT', value: `${s.ft_made}/${s.ft_att}`, detail: `${s.ft_pct}%` },
+    { cls: 'made', label: 'Assists', value: s.assists_total, detail: `${s.assist_2}×2 · ${s.assist_3}×3` },
+    { cls: 'made', label: 'Good Shots', value: `${s.good_made}/${s.good_total}`, detail: s.good_total ? `${s.good_pct}%` : '&nbsp;' },
+    { cls: 'miss', label: 'Bad Shots', value: `${s.bad_made}/${s.bad_total}`, detail: s.bad_total ? `${s.bad_pct}%` : '&nbsp;' },
+    { cls: 'to', label: 'Stupid Shots', value: `${s.stupid_made}/${s.stupid_total}`, detail: s.stupid_total ? `${s.stupid_pct}%` : '&nbsp;' },
+    { cls: 'reb', label: 'Rebounds', value: s.reb_total, detail: `${s.off_reb} off · ${s.def_reb} def` },
+    { cls: 'stl', label: 'Steals', value: s.steal, detail: '&nbsp;' },
+    { cls: 'block', label: 'Blocks', value: s.block, detail: '&nbsp;' },
+    { cls: 'to', label: 'Turnovers', value: s.to_total, detail: `${s.to_pass} pass · ${s.to_handle} handle · ${s.to_swiped} swiped` },
+    { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yelled` },
+    { cls: 'miss', label: 'Chicken Outs', value: s.chicken_out, detail: '&nbsp;' },
+  ];
+  const html = cards.map(c => `
+    <div class="stat-card ${c.cls}">
+      <div class="label">${c.label}</div>
+      <div class="value">${c.value}</div>
+      <div class="detail">${c.detail}</div>
+    </div>
+  `).join('');
+  document.getElementById('statsGrid').innerHTML = html;
+}
+
+function renderLog() {
+  const body = document.getElementById('logBody');
+  document.getElementById('logCount').textContent = `${game.events.length} event${game.events.length === 1 ? '' : 's'}`;
+  if (game.events.length === 0) {
+    body.innerHTML = '<div class="log-empty">No events yet. Tap a stat button or enable voice to start.</div>';
+    return;
+  }
+  const items = [...game.events].reverse();
+  const html = items.map(ev => {
+    const def = ACTION_DEFS[ev.type] || { label: ev.type };
+    const filmT = ev.filmTime || '00:00';
+    const gameT = ev.gameTime || '--:--';
+    return `
+      <div class="log-item">
+        <span class="log-period">${ev.period || ''}</span>
+        <span class="log-type">${def.label}</span>
+        <button class="log-nudge" data-nudge="${ev.id}" data-delta="-5" title="Roll back 5 seconds">−5</button>
+        <button class="log-nudge" data-nudge="${ev.id}" data-delta="5" title="Roll forward 5 seconds">+5</button>
+        <span class="log-time-stack">
+          <span class="log-time mono" data-edit-time="${ev.id}" title="Edit film time">${filmT}</span>
+          <span class="game-time mono" title="Game clock">${gameT}</span>
+        </span>
+        <button class="log-del" data-del="${ev.id}" title="Delete">×</button>
+      </div>
+    `;
+  }).join('');
+  body.innerHTML = html;
+}
+
+function render() {
+  renderStats();
+  renderLog();
+  renderOnOff();
+}
+
+function renderGameList() {
+  const list = document.getElementById('gameList');
+  if (games.length === 0) { list.innerHTML = '<div style="color:var(--text-faint);font-size:12px;padding:8px;">No games yet.</div>'; return; }
+  list.innerHTML = games.map(g => {
+    const isActive = game && g.id === game.id;
+    const date = new Date(g.createdAt).toLocaleDateString();
+    return `
+      <div class="game-item ${isActive ? 'active' : ''}">
+        <div>
+          <div class="name">${escapeHtml(g.name)}</div>
+          <div class="meta">${date}</div>
+        </div>
+        <button class="modal-btn" data-load="${g.id}" style="flex:0;min-width:auto;padding:6px 10px;">Load</button>
+        <button class="del" data-del-game="${g.id}" title="Delete">🗑</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+// ============================================================
+// CSV export
+// ============================================================
+function exportCSV() {
+  if (!game.events.length) { toast('No events to export', 'error'); return; }
+  const rows = [['Game', 'Period', 'Film Time', 'Film Time (sec)', 'Game Time', 'Game Time (sec)', 'Logged At (ISO)', 'Event', 'Quality']];
+  for (const ev of game.events) {
+    const def = ACTION_DEFS[ev.type] || { label: ev.type };
+    rows.push([
+      game.name,
+      ev.period || '',
+      ev.filmTime || '',
+      ev.filmTimeSec != null ? ev.filmTimeSec : '',
+      ev.gameTime || '',
+      ev.gameTimeSec != null ? ev.gameTimeSec : '',
+      new Date(ev.loggedAt).toISOString(),
+      def.label,
+      def.quality || ''
+    ]);
+  }
+  const s = computeStats();
+  const { onSec, offSec } = getOnOffTime();
+  rows.push([]);
+  rows.push(['SUMMARY']);
+  rows.push(['PTSC (Pts Created)', s.pts_created, `${s.points} scored + ${s.assist_pts} assisted`]);
+  rows.push(['Points', s.points]);
+  rows.push(['PTSA', s.ptsa_total, `${s.ptsa_count} opponent buckets`]);
+  rows.push(['Floor Time', `On ${fmtClock(onSec)}`, `Off ${fmtClock(offSec)}`]);
+  rows.push(['2PT', `${s.fg2_made}/${s.fg2_att}`, `${s.fg2_pct}%`]);
+  rows.push(['3PT', `${s.fg3_made}/${s.fg3_att}`, `${s.fg3_pct}%`]);
+  rows.push(['FT', `${s.ft_made}/${s.ft_att}`, `${s.ft_pct}%`]);
+  rows.push(['Assists', s.assists_total, `${s.assist_2}×2 / ${s.assist_3}×3`]);
+  rows.push(['Good Shots', `${s.good_made}/${s.good_total}`, s.good_total ? `${s.good_pct}%` : '']);
+  rows.push(['Bad Shots', `${s.bad_made}/${s.bad_total}`, s.bad_total ? `${s.bad_pct}%` : '']);
+  rows.push(['Stupid Shots', `${s.stupid_made}/${s.stupid_total}`, s.stupid_total ? `${s.stupid_pct}%` : '']);
+  rows.push(['Rebounds', s.reb_total, `${s.off_reb} off / ${s.def_reb} def`]);
+  rows.push(['Steals', s.steal]);
+  rows.push(['Blocks', s.block]);
+  rows.push(['Turnovers', s.to_total, `${s.to_pass} pass / ${s.to_handle} handle / ${s.to_swiped} swiped`]);
+  rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at`]);
+  rows.push(['Chicken Outs', s.chicken_out]);
+
+  const csv = rows.map(r => r.map(c => {
+    const x = c == null ? '' : String(c);
+    return /[",\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x;
+  }).join(',')).join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${game.name.replace(/[^a-z0-9_-]+/gi, '_')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('CSV exported', 'success');
+}
+
+// ============================================================
+// Voice recognition
+// ============================================================
+const VOICE_PATTERNS = [
+  // Brick → stupid 3pt miss
+  { test: /\b(brick|air ?ball|no rim|airball)\b/, action: () => logEvent('missed_3_stupid') },
+  // 2PT shooting (quality + made/missed)
+  { test: /\bgood made (two|to|too|2)\b/, action: () => logEvent('made_2_good') },
+  { test: /\bgood (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_good') },
+  { test: /\bbad made (two|to|too|2)\b/, action: () => logEvent('made_2_bad') },
+  { test: /\bbad (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_bad') },
+  { test: /\bstupid made (two|to|too|2)\b/, action: () => logEvent('made_2_stupid') },
+  { test: /\bstupid (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_stupid') },
+  // 3PT shooting
+  { test: /\bgood made (three|tree|3)\b/, action: () => logEvent('made_3_good') },
+  { test: /\bgood (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_good') },
+  { test: /\bbad made (three|tree|3)\b/, action: () => logEvent('made_3_bad') },
+  { test: /\bbad (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_bad') },
+  { test: /\bstupid made (three|tree|3)\b/, action: () => logEvent('made_3_stupid') },
+  { test: /\bstupid (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_stupid') },
+  // Free throws
+  { test: /\bmade (one|1)\b/, action: () => logEvent('made_ft') },
+  { test: /\bmade (the )?(free ?throw|freebie)\b/, action: () => logEvent('made_ft') },
+  { test: /\b(missed|miss) (one|1)\b/, action: () => logEvent('missed_ft') },
+  { test: /\b(missed|miss) (the )?(free ?throw|freebie)\b/, action: () => logEvent('missed_ft') },
+  // Assists
+  { test: /\bassist (two|to|too|2)\b/, action: () => logEvent('assist_2') },
+  { test: /\bassist (three|tree|3)\b/, action: () => logEvent('assist_3') },
+  // Rebounds
+  { test: /\b(off(ensive)? (board|rebound)|off ?reb|o ?reb)\b/, action: () => logEvent('off_reb') },
+  { test: /\b(def(ensive)? (board|rebound)|def ?reb|d ?reb)\b/, action: () => logEvent('def_reb') },
+  // Steal & block
+  { test: /\bsteal\b/, action: () => logEvent('steal') },
+  { test: /\b(block|rejection|swat)\b/, action: () => logEvent('block') },
+  // Defense issues
+  { test: /\b(lazy|loafing|jogging back)\b/, action: () => logEvent('lazy_d') },
+  { test: /\b(bad position|out of position|wrong spot|caught watching)\b/, action: () => logEvent('bad_pos') },
+  { test: /\b(blow ?by|blew by|got beat)\b/, action: () => logEvent('blow_by') },
+  { test: /\b(yelled at|coach yelled|got yelled)\b/, action: () => logEvent('yelled_at') },
+  // Habits
+  { test: /\b(chicken out|chickened out|shied away|shy of contact|avoided contact)\b/, action: () => logEvent('chicken_out') },
+  // Turnovers
+  { test: /\b(bad pass|picked off|intercepted)\b/, action: () => logEvent('to_pass') },
+  { test: /\b(lost (it|handle|the ball|her dribble)|fumbled|dribble off)\b/, action: () => logEvent('to_handle') },
+  { test: /\b(ball swiped|swiped|stripped|knocked away)\b/, action: () => logEvent('to_swiped') },
+  // PTSA
+  { test: /\b(p ?t ?s ?a|points against|they scored) (one|1)\b/, action: () => logEvent('ptsa_1') },
+  { test: /\b(p ?t ?s ?a|points against|they scored) (two|to|too|2)\b/, action: () => logEvent('ptsa_2') },
+  { test: /\b(p ?t ?s ?a|points against|they scored) (three|tree|3)\b/, action: () => logEvent('ptsa_3') },
+  // On/off floor
+  { test: /\b(sub in|subbed in|on the floor|going in|she'?s in)\b/, action: () => { if (getOnOffState() !== 'on') toggleOnOff(); } },
+  { test: /\b(sub out|subbed out|off the floor|coming out|she'?s out)\b/, action: () => { if (getOnOffState() !== 'off') toggleOnOff(); } },
+  // Game clock (the manual basketball clock)
+  { test: /\bstart (game )?clock\b/, action: () => { if (!gameClockRunning) toggleGameClock(); } },
+  { test: /\b(stop|pause) (game )?clock\b/, action: () => { if (gameClockRunning) toggleGameClock(); } },
+  { test: /\breset (game )?clock\b/, action: () => resetGameClock() },
+  // Film control
+  { test: /\b(play|start) (film|video)\b/, action: () => videoPlay() },
+  { test: /\b(pause|stop) (film|video)\b/, action: () => videoPause() },
+  // Undo
+  { test: /\b(undo|scratch that|cancel last)\b/, action: () => undoLast() },
+];
+
+function initVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return null;
+  const rec = new SR();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'en-US';
+  rec.onresult = (e) => {
+    let interim = '', finalText = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const r = e.results[i];
+      if (r.isFinal) finalText += r[0].transcript + ' ';
+      else interim += r[0].transcript + ' ';
+    }
+    document.getElementById('voiceHeard').textContent = (finalText || interim).slice(-60);
+    if (finalText) handleVoiceText(finalText.toLowerCase());
+  };
+  rec.onerror = (e) => {
+    if (e.error === 'no-speech' || e.error === 'aborted') return;
+    if (e.error === 'not-allowed') {
+      toast('Microphone permission denied', 'error');
+      stopVoice();
+    }
+  };
+  rec.onend = () => { if (voiceOn) { try { rec.start(); } catch (e) {} } };
+  return rec;
+}
+
+function handleVoiceText(text) {
+  for (const p of VOICE_PATTERNS) {
+    if (p.test.test(text)) {
+      p.action();
+      document.getElementById('voiceLast').textContent = '✓';
+      setTimeout(() => { document.getElementById('voiceLast').textContent = ''; }, 800);
+      return;
+    }
+  }
+}
+
+function startVoice() {
+  if (!recognition) recognition = initVoice();
+  if (!recognition) {
+    toast('Voice not supported on this browser. Use taps.', 'error');
+    return;
+  }
+  voiceOn = true;
+  try { recognition.start(); } catch (e) {}
+  document.getElementById('voiceBtn').classList.add('on');
+  document.getElementById('voiceLabel').textContent = 'Voice On';
+  document.getElementById('voiceStatus').classList.add('show');
+}
+function stopVoice() {
+  voiceOn = false;
+  if (recognition) { try { recognition.stop(); } catch (e) {} }
+  document.getElementById('voiceBtn').classList.remove('on');
+  document.getElementById('voiceLabel').textContent = 'Voice Off';
+  document.getElementById('voiceStatus').classList.remove('show');
+}
+
+// ============================================================
+// Modal helpers
+// ============================================================
+function showModal(id) { document.getElementById(id).classList.add('show'); }
+function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+async function openMenu() {
+  renderGameList();
+  document.getElementById('periodLengthInput').value = fmtClock(periodLengthSec);
+  document.getElementById('voiceAutoResume').checked = await getSetting('voiceAutoResume', false);
+  showModal('menuModal');
+}
+function closeMenu() { hideModal('menuModal'); }
+
+// ============================================================
+// Toast / haptic
+// ============================================================
+let toastTimer = null;
+function toast(msg, kind) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (kind ? ' ' + kind : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.classList.remove('show'); }, 1600);
+}
+function flashSuccess(msg) { toast(msg, 'success'); }
+function buzz(ms) { if (navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
+
+// ============================================================
+// Wire-up
+// ============================================================
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadAll();
+  renderGameClock();
+  updateFilmClock();
+
+  // Auto-resume voice if the user opted in (must be on https:// or localhost
+  // for the mic permission to persist; on file:// Chrome will re-prompt)
+  if (await getSetting('voiceAutoResume', false)) {
+    setTimeout(() => { try { startVoice(); } catch (e) {} }, 600);
+  }
+
+  // Game name
+  const nameInput = document.getElementById('gameName');
+  nameInput.addEventListener('change', async () => {
+    game.name = nameInput.value.trim() || 'Untitled Game';
+    nameInput.value = game.name;
+    await saveGame();
+  });
+
+  // Period selector — also resets game clock to full period
+  document.getElementById('periodSelect').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.period-btn');
+    if (!btn) return;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    game.period = btn.dataset.period;
+    await saveGame();
+    gameClockSec = periodLengthSec;
+    gameClockRunning = false;
+    if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
+    renderGameClock();
+  });
+
+  // Game clock controls
+  document.getElementById('gameClockToggle').addEventListener('click', toggleGameClock);
+  document.getElementById('gameClockReset').addEventListener('click', resetGameClock);
+  document.getElementById('gameClockTime').addEventListener('click', editGameClock);
+
+  // Film clock — tap to seek the video to a given time
+  document.getElementById('filmTime').addEventListener('click', () => {
+    editingEventId = '__film__';
+    document.getElementById('timeModalTitle').textContent = 'Seek Video To';
+    document.getElementById('timeInput').value = fmtClock(filmTimeSec);
+    showModal('timeModal');
+  });
+
+  // ON/OFF toggle
+  document.getElementById('onOffToggle').addEventListener('click', toggleOnOff);
+
+  // Action buttons
+  document.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', () => logEvent(btn.dataset.action));
+  });
+
+  // Voice + Undo
+  document.getElementById('voiceBtn').addEventListener('click', () => voiceOn ? stopVoice() : startVoice());
+  document.getElementById('undoBtn').addEventListener('click', undoLast);
+
+  // Log delegation: nudge, edit time, delete
+  document.getElementById('logBody').addEventListener('click', (e) => {
+    const nudgeBtn = e.target.closest('[data-nudge]');
+    if (nudgeBtn) {
+      const delta = parseInt(nudgeBtn.dataset.delta, 10);
+      nudgeEventTime(nudgeBtn.dataset.nudge, delta);
+      return;
+    }
+    const delBtn = e.target.closest('[data-del]');
+    if (delBtn) { deleteEvent(delBtn.dataset.del); return; }
+    const timeBtn = e.target.closest('[data-edit-time]');
+    if (timeBtn) {
+      editingEventId = timeBtn.dataset.editTime;
+      const ev = game.events.find(x => x.id === editingEventId);
+      document.getElementById('timeModalTitle').textContent = 'Edit Film Time (game clock shifts by same delta)';
+      document.getElementById('timeInput').value = ev ? (ev.filmTime || '00:00') : '00:00';
+      showModal('timeModal');
+    }
+  });
+
+  // Time modal
+  document.getElementById('timeSave').addEventListener('click', async () => {
+    const v = document.getElementById('timeInput').value;
+    const sec = parseClock(v);
+    if (sec === null) { toast('Invalid time format. Use MM:SS', 'error'); return; }
+    if (editingEventId === '__film__') {
+      videoSeek(sec);
+      filmTimeSec = sec;
+      updateFilmClock();
+    } else if (editingEventId === null) {
+      gameClockSec = sec;
+      renderGameClock();
+    } else {
+      await editEventTime(editingEventId, v);
+    }
+    hideModal('timeModal');
+    editingEventId = null;
+  });
+  document.getElementById('timeCancel').addEventListener('click', () => { hideModal('timeModal'); editingEventId = null; });
+
+  // Menu
+  document.getElementById('menuBtn').addEventListener('click', openMenu);
+  document.getElementById('closeMenu').addEventListener('click', closeMenu);
+  document.getElementById('newGameBtn').addEventListener('click', async () => {
+    const name = prompt('Name for new game?', `Game ${games.length + 1}`);
+    if (name === null) return;
+    await createGame(name.trim() || `Game ${games.length + 1}`);
+    closeMenu();
+  });
+  document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
+  document.getElementById('importBackupBtn').addEventListener('click', () => document.getElementById('importBackupFile').click());
+  document.getElementById('importBackupFile').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) importBackup(f);
+  });
+  document.getElementById('voiceAutoResume').addEventListener('change', async (e) => {
+    await setSetting('voiceAutoResume', e.target.checked);
+    toast(e.target.checked ? 'Voice will auto-resume on load' : 'Auto-resume off', 'success');
+  });
+  document.getElementById('clearGameBtn').addEventListener('click', async () => {
+    if (!confirm('Clear ALL events from this game? This cannot be undone.')) return;
+    game.events = [];
+    await saveGame();
+    render();
+    toast('Events cleared', 'success');
+    closeMenu();
+  });
+  document.getElementById('periodLengthInput').addEventListener('change', async (e) => {
+    const sec = parseClock(e.target.value);
+    if (sec === null || sec < 30) { toast('Invalid period length (min 0:30)', 'error'); e.target.value = fmtClock(periodLengthSec); return; }
+    periodLengthSec = sec;
+    game.periodLengthSec = sec;
+    gameClockSec = sec;
+    await saveGame();
+    renderGameClock();
+    toast(`Period set to ${fmtClock(sec)}`, 'success');
+  });
+  document.getElementById('gameList').addEventListener('click', async (e) => {
+    const loadBtn = e.target.closest('[data-load]');
+    if (loadBtn) { e.stopPropagation(); await switchGame(loadBtn.dataset.load); return; }
+    const delBtn = e.target.closest('[data-del-game]');
+    if (delBtn) {
+      e.stopPropagation();
+      if (!confirm('Delete this game permanently?')) return;
+      await deleteGame(delBtn.dataset.delGame);
+      return;
+    }
+  });
+
+  // Modal background dismiss
+  document.querySelectorAll('.modal-bg').forEach(bg => {
+    bg.addEventListener('click', (e) => { if (e.target === bg) bg.classList.remove('show'); });
+  });
+
+  // ====== Video panel wiring ======
+  const stage = document.getElementById('videoStage');
+  const localFile = document.getElementById('localFile');
+  const ytUrlInput = document.getElementById('ytUrlInput');
+  const pickLocalBtn = document.getElementById('pickLocalBtn');
+  const loadYtBtn = document.getElementById('loadYtBtn');
+  const modeLocalBtn = document.getElementById('modeLocalBtn');
+  const modeYtBtn = document.getElementById('modeYtBtn');
+
+  function setVideoMode(mode) {
+    if (mode === 'local') {
+      modeLocalBtn.classList.add('active');
+      modeYtBtn.classList.remove('active');
+      pickLocalBtn.style.display = '';
+      ytUrlInput.style.display = 'none';
+      loadYtBtn.style.display = 'none';
+    } else {
+      modeLocalBtn.classList.remove('active');
+      modeYtBtn.classList.add('active');
+      pickLocalBtn.style.display = 'none';
+      ytUrlInput.style.display = '';
+      loadYtBtn.style.display = '';
+    }
+  }
+  modeLocalBtn.addEventListener('click', () => setVideoMode('local'));
+  modeYtBtn.addEventListener('click', () => setVideoMode('youtube'));
+  pickLocalBtn.addEventListener('click', () => localFile.click());
+  localFile.addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) loadLocalVideo(f);
+  });
+  loadYtBtn.addEventListener('click', () => loadYouTube(ytUrlInput.value));
+  ytUrlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadYouTube(ytUrlInput.value); });
+
+  // Drag and drop into stage
+  stage.addEventListener('dragover', (e) => { e.preventDefault(); stage.classList.add('dragover'); });
+  stage.addEventListener('dragleave', () => stage.classList.remove('dragover'));
+  stage.addEventListener('drop', (e) => {
+    e.preventDefault();
+    stage.classList.remove('dragover');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && f.type.startsWith('video/')) {
+      setVideoMode('local');
+      loadLocalVideo(f);
+    } else {
+      toast('Please drop a video file', 'error');
+    }
+  });
+
+  // Keyboard shortcuts (desktop)
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.metaKey || e.ctrlKey) return;
+    const map = {
+      't': 'made_ft', 'y': 'missed_ft',
+      'q': 'block',
+      'a': 'off_reb', 's': 'def_reb',
+      'd': 'steal',
+      'h': 'chicken_out',
+      'z': 'lazy_d', 'x': 'bad_pos', 'c': 'blow_by', 'v': 'yelled_at',
+      'b': 'to_pass', 'n': 'to_handle', 'm': 'to_swiped',
+      '1': 'ptsa_1', '2': 'ptsa_2', '3': 'ptsa_3',
+    };
+    const k = e.key.toLowerCase();
+    if (map[k]) { e.preventDefault(); logEvent(map[k]); return; }
+    if (k === 'u') { e.preventDefault(); undoLast(); return; }
+    if (k === 'o') { e.preventDefault(); toggleOnOff(); return; }
+    if (k === 'g') { e.preventDefault(); toggleGameClock(); return; }
+    if (k === ' ') { e.preventDefault(); videoToggle(); return; }
+  });
+});
+</script>
+</body>
+</html>
