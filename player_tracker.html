@@ -1215,10 +1215,28 @@ function renderOnOff() {
   const { onSec, offSec, isOn } = getOnOffTime();
   btn.classList.toggle('on', isOn);
   btn.classList.toggle('off', !isOn);
+  // Inline-style fallback in case CSS rules get overridden by anything
+  if (isOn) {
+    btn.style.background = '#22c55e';
+    btn.style.borderColor = '#22c55e';
+    btn.style.boxShadow = '0 0 14px rgba(34, 197, 94, 0.55)';
+    btn.style.opacity = '1';
+  } else {
+    btn.style.background = '';
+    btn.style.borderColor = '';
+    btn.style.boxShadow = '';
+    btn.style.opacity = '0.65';
+  }
   const stateEl = btn.querySelector('.on-off-state');
-  if (stateEl) stateEl.textContent = isOn ? 'ON FLOOR' : 'OFF FLOOR';
+  if (stateEl) {
+    stateEl.textContent = isOn ? 'ON FLOOR' : 'OFF FLOOR';
+    stateEl.style.color = isOn ? '#fff' : '';
+  }
   const timesEl = btn.querySelector('.on-off-times');
-  if (timesEl) timesEl.textContent = `On ${fmtClock(onSec)} · Off ${fmtClock(offSec)}`;
+  if (timesEl) {
+    timesEl.textContent = `On ${fmtClock(onSec)} · Off ${fmtClock(offSec)}`;
+    timesEl.style.color = isOn ? 'rgba(255,255,255,0.85)' : '';
+  }
   document.querySelectorAll('.action-btn.ptsa').forEach(b => b.classList.toggle('faded', !isOn));
 }
 
