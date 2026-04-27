@@ -63,6 +63,19 @@
   .menu-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text); width: 34px; height: 34px; border-radius: 8px; font-size: 18px; line-height: 1; cursor: pointer; }
   .menu-btn:active { background: var(--surface-3); }
 
+  /* Top control bar — Voice + Film Play, prominent */
+  .top-control-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .top-ctrl { background: var(--surface-2); border: 2px solid var(--border); color: var(--text); padding: 10px 6px; border-radius: 10px; font-family: 'Bebas Neue'; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 64px; transition: background 0.15s, border-color 0.15s; }
+  .top-ctrl:active { transform: scale(0.97); background: var(--surface-3); }
+  .top-ctrl-ico { font-size: 22px; line-height: 1; }
+  .top-ctrl-label { font-size: 13px; letter-spacing: 0.10em; }
+  .top-ctrl.voice { border-color: rgba(34, 197, 94, 0.35); }
+  .top-ctrl.voice.on { background: rgba(34, 197, 94, 0.15); border-color: var(--listening); color: var(--listening); }
+  .top-ctrl.voice.on .top-ctrl-ico { animation: pulse 1.4s ease-in-out infinite; }
+  .top-ctrl.film { border-color: rgba(249, 115, 22, 0.35); }
+  .top-ctrl.film.playing { background: rgba(249, 115, 22, 0.15); border-color: var(--accent); }
+  .top-ctrl.film .top-ctrl-ico { color: var(--accent); }
+
   /* Dual clocks */
   .clocks-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
   .clock-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 6px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
@@ -137,8 +150,6 @@
   .action-btn.shot.good:active { background: rgba(34, 197, 94, 0.30); }
   .action-btn.shot.bad { border-color: rgba(245, 158, 11, 0.6); background: rgba(245, 158, 11, 0.10); }
   .action-btn.shot.bad:active { background: rgba(245, 158, 11, 0.30); }
-  .action-btn.shot.stupid { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.10); }
-  .action-btn.shot.stupid:active { background: rgba(239, 68, 68, 0.30); }
 
   /* Voice + Undo bar */
   .control-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
@@ -258,13 +269,24 @@
       <button class="menu-btn" id="menuBtn" title="Menu">≡</button>
     </div>
 
+    <div class="top-control-bar">
+      <button class="top-ctrl voice" id="voiceBtn">
+        <span class="top-ctrl-ico">🎙</span>
+        <span class="top-ctrl-label" id="voiceLabel">VOICE OFF</span>
+      </button>
+      <button class="top-ctrl film" id="filmPlayBtn">
+        <span class="top-ctrl-ico" id="filmPlayIco">▶</span>
+        <span class="top-ctrl-label">PLAY FILM</span>
+      </button>
+    </div>
+
     <div class="clocks-row">
       <div class="clock-box film">
-        <div class="clock-label">FILM</div>
+        <div class="clock-label">FILM TIME</div>
         <div class="clock-time mono" id="filmTime" title="Tap to seek video">00:00</div>
       </div>
       <div class="clock-box game">
-        <div class="clock-label">GAME</div>
+        <div class="clock-label">GAME TIME</div>
         <div class="clock-time mono" id="gameClockTime" title="Tap to edit">08:00</div>
         <div class="clock-controls">
           <button class="clock-ctrl" id="gameClockToggle" title="Play/Pause">▶</button>
@@ -295,31 +317,27 @@
 
     <div class="section">
       <div class="section-label">2PT Made</div>
-      <div class="btn-grid cols-3">
+      <div class="btn-grid cols-2">
         <button class="action-btn shot good" data-action="made_2_good">Good<span class="sub">+2 Made</span></button>
         <button class="action-btn shot bad" data-action="made_2_bad">Bad<span class="sub">+2 Made</span></button>
-        <button class="action-btn shot stupid" data-action="made_2_stupid">Stupid<span class="sub">+2 Made</span></button>
       </div>
       <div class="section-label" style="margin-top: 8px;">2PT Missed</div>
-      <div class="btn-grid cols-3">
+      <div class="btn-grid cols-2">
         <button class="action-btn shot good" data-action="missed_2_good">Good<span class="sub">+2 Miss</span></button>
         <button class="action-btn shot bad" data-action="missed_2_bad">Bad<span class="sub">+2 Miss</span></button>
-        <button class="action-btn shot stupid" data-action="missed_2_stupid">Stupid<span class="sub">+2 Miss</span></button>
       </div>
     </div>
 
     <div class="section">
       <div class="section-label">3PT Made</div>
-      <div class="btn-grid cols-3">
+      <div class="btn-grid cols-2">
         <button class="action-btn shot good" data-action="made_3_good">Good<span class="sub">+3 Made</span></button>
         <button class="action-btn shot bad" data-action="made_3_bad">Bad<span class="sub">+3 Made</span></button>
-        <button class="action-btn shot stupid" data-action="made_3_stupid">Stupid<span class="sub">+3 Made</span></button>
       </div>
       <div class="section-label" style="margin-top: 8px;">3PT Missed</div>
-      <div class="btn-grid cols-3">
+      <div class="btn-grid cols-2">
         <button class="action-btn shot good" data-action="missed_3_good">Good<span class="sub">+3 Miss</span></button>
         <button class="action-btn shot bad" data-action="missed_3_bad">Bad<span class="sub">+3 Miss</span></button>
-        <button class="action-btn shot stupid" data-action="missed_3_stupid">Stupid<span class="sub">+3 Miss</span></button>
       </div>
     </div>
 
@@ -356,6 +374,8 @@
         <button class="action-btn habit-pos" data-action="box_out">Box<span class="sub">Out</span></button>
         <button class="action-btn habit" data-action="no_box_out">No Box<span class="sub">Out</span></button>
         <button class="action-btn habit" data-action="chicken_out">Chicken<span class="sub">Out</span></button>
+        <button class="action-btn habit" data-action="not_moving">Not<span class="sub">Moving Off Ball</span></button>
+        <button class="action-btn habit" data-action="body_language">Body<span class="sub">Language</span></button>
       </div>
     </div>
 
@@ -366,6 +386,7 @@
         <button class="action-btn def" data-action="bad_pos">Bad<span class="sub">Position</span></button>
         <button class="action-btn def" data-action="blow_by">Blow<span class="sub">By</span></button>
         <button class="action-btn def" data-action="yelled_at">Yelled<span class="sub">At by Coach</span></button>
+        <button class="action-btn def" data-action="late_closeout">Late<span class="sub">Closeout</span></button>
       </div>
     </div>
 
@@ -373,8 +394,10 @@
       <div class="section-label">Turnovers</div>
       <div class="btn-grid cols-3">
         <button class="action-btn to" data-action="to_pass">Bad<span class="sub">Pass</span></button>
+        <button class="action-btn to" data-action="to_picked">Pass<span class="sub">Picked Off</span></button>
         <button class="action-btn to" data-action="to_handle">Lost<span class="sub">Handle</span></button>
-        <button class="action-btn to" data-action="to_swiped">Ball<span class="sub">Swiped</span></button>
+        <button class="action-btn to" data-action="to_swiped">Ball<span class="sub">Stolen</span></button>
+        <button class="action-btn to" data-action="to_foot">Foot<span class="sub">Fault</span></button>
       </div>
     </div>
 
@@ -387,8 +410,7 @@
       </div>
     </div>
 
-    <div class="control-bar">
-      <button class="ctrl-btn voice" id="voiceBtn"><span class="ico">🎙</span><span id="voiceLabel">Voice Off</span></button>
+    <div class="control-bar" style="grid-template-columns: 1fr;">
       <button class="ctrl-btn" id="undoBtn"><span class="ico">↶</span>Undo Last</button>
     </div>
 
@@ -451,7 +473,7 @@
     <div class="voice-help">
       Say short phrases. The recogniser listens continuously when toggled on.
       <br><br>
-      Shooting: <code>good made two</code> · <code>bad missed three</code> · <code>stupid made three</code> · <code>brick</code> (logs stupid 3pt miss)
+      Shooting: <code>good made two</code> · <code>bad missed three</code> · <code>good made three</code> · <code>brick</code> (logs bad 3pt miss)
       <br>
       Free Throws: <code>made one</code> · <code>missed free throw</code>
       <br>
@@ -459,11 +481,11 @@
       <br>
       Rebounds, Blocks &amp; Deflections: <code>off board</code> · <code>def board</code> · <code>block</code> · <code>deflection</code> · <code>tipped</code>
       <br>
-      Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code>
+      Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code> · <code>late closeout</code>
       <br>
-      Habits: <code>box out</code> · <code>no box out</code> · <code>chicken out</code> · <code>shied away</code>
+      Habits: <code>box out</code> · <code>no box out</code> · <code>chicken out</code> · <code>not moving</code> · <code>body language</code>
       <br>
-      Turnovers: <code>bad pass</code> · <code>lost handle</code> · <code>ball swiped</code>
+      Turnovers: <code>bad pass</code> · <code>P P O</code> · <code>picked off</code> · <code>lost handle</code> · <code>ball stolen</code> · <code>foot fault</code> · <code>travel</code> · <code>out of bounds</code>
       <br>
       PTSA: <code>they scored two</code> · <code>p t s a three</code>
       <br>
@@ -509,17 +531,13 @@ const ACTION_DEFS = {
   // 2PT (quality-graded)
   made_2_good:     { label: 'Good +2 Made',     category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'good' },
   made_2_bad:      { label: 'Bad +2 Made',      category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'bad' },
-  made_2_stupid:   { label: 'Stupid +2 Made',   category: 'shoot', isShot: true,  isMade: true,  pts: 2, quality: 'stupid' },
   missed_2_good:   { label: 'Good +2 Miss',     category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'good' },
   missed_2_bad:    { label: 'Bad +2 Miss',      category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'bad' },
-  missed_2_stupid: { label: 'Stupid +2 Miss',   category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'stupid' },
   // 3PT (quality-graded)
   made_3_good:     { label: 'Good +3 Made',     category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'good' },
   made_3_bad:      { label: 'Bad +3 Made',      category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'bad' },
-  made_3_stupid:   { label: 'Stupid +3 Made',   category: 'shoot', isShot: true,  isMade: true,  pts: 3, quality: 'stupid' },
   missed_3_good:   { label: 'Good +3 Miss',     category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'good' },
   missed_3_bad:    { label: 'Bad +3 Miss',      category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'bad' },
-  missed_3_stupid: { label: 'Stupid +3 Miss',   category: 'shoot', isShot: true,  isMade: false, pts: 0, quality: 'stupid' },
   // FT
   made_ft:   { label: '+1 Made FT',      category: 'shoot', pts: 1 },
   missed_ft: { label: '+1 Missed FT',    category: 'shoot', pts: 0 },
@@ -536,16 +554,21 @@ const ACTION_DEFS = {
   bad_pos:   { label: 'Bad Position',    category: 'def' },
   blow_by:   { label: 'Blow By',         category: 'def' },
   yelled_at: { label: 'Yelled At',       category: 'def' },
+  late_closeout: { label: 'Late Closeout', category: 'def' },
   // Habits
-  chicken_out: { label: 'Chicken Out',   category: 'habit' },
-  box_out:     { label: 'Box Out',       category: 'habit' },
-  no_box_out:  { label: 'No Box Out',    category: 'habit' },
+  chicken_out:   { label: 'Chicken Out',          category: 'habit' },
+  box_out:       { label: 'Box Out',              category: 'habit' },
+  no_box_out:    { label: 'No Box Out',           category: 'habit' },
+  not_moving:    { label: 'Not Moving Off Ball',  category: 'habit' },
+  body_language: { label: 'Body Language',        category: 'habit' },
   // Defensive plays (extension of R&S&B)
   deflection:  { label: 'Deflection',    category: 'stl' },
   // Turnovers
-  to_pass:   { label: 'Bad Pass TO',     category: 'to' },
-  to_handle: { label: 'Lost Handle TO',  category: 'to' },
-  to_swiped: { label: 'Ball Swiped TO',  category: 'to' },
+  to_pass:    { label: 'Bad Pass TO',         category: 'to' },
+  to_picked:  { label: 'Pass Picked Off TO',  category: 'to' },
+  to_handle:  { label: 'Lost Handle TO',      category: 'to' },
+  to_swiped:  { label: 'Ball Stolen TO',      category: 'to' },
+  to_foot:    { label: 'Foot Fault TO',       category: 'to' },
   // PTSA — points against
   ptsa_1:    { label: '+1 PTSA',         category: 'ptsa', ptsa: 1 },
   ptsa_2:    { label: '+2 PTSA',         category: 'ptsa', ptsa: 2 },
@@ -1131,10 +1154,20 @@ async function loadYouTube(urlOrId) {
 
 function updateFilmClock() {
   filmTimeSec = videoCurrentTime();
+  const playing = videoIsPlaying();
   const el = document.getElementById('filmTime');
   if (el) {
     el.textContent = fmtClock(filmTimeSec);
-    el.classList.toggle('running', videoIsPlaying());
+    el.classList.toggle('running', playing);
+  }
+  // Update the prominent film play button icon + state
+  const fpIco = document.getElementById('filmPlayIco');
+  const fpBtn = document.getElementById('filmPlayBtn');
+  if (fpIco) fpIco.textContent = playing ? '⏸' : '▶';
+  if (fpBtn) {
+    fpBtn.classList.toggle('playing', playing);
+    const lbl = fpBtn.querySelector('.top-ctrl-label');
+    if (lbl) lbl.textContent = playing ? 'PAUSE FILM' : 'PLAY FILM';
   }
   renderOnOff();
 }
@@ -1268,13 +1301,12 @@ function computeStats() {
     ft_made: 0, ft_miss: 0,
     good_made: 0, good_miss: 0,
     bad_made: 0, bad_miss: 0,
-    stupid_made: 0, stupid_miss: 0,
     off_reb: 0, def_reb: 0,
-    steal: 0, block: 0,
+    steal: 0, block: 0, deflection: 0,
     assist_2: 0, assist_3: 0,
-    chicken_out: 0, box_out: 0, no_box_out: 0, deflection: 0,
-    lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0,
-    to_pass: 0, to_handle: 0, to_swiped: 0,
+    chicken_out: 0, box_out: 0, no_box_out: 0, not_moving: 0, body_language: 0,
+    lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0, late_closeout: 0,
+    to_pass: 0, to_picked: 0, to_handle: 0, to_swiped: 0, to_foot: 0,
     ptsa_1: 0, ptsa_2: 0, ptsa_3: 0,
     points: 0
   };
@@ -1292,11 +1324,9 @@ function computeStats() {
       if (def.isMade) {
         if (def.quality === 'good') s.good_made++;
         else if (def.quality === 'bad') s.bad_made++;
-        else if (def.quality === 'stupid') s.stupid_made++;
       } else {
         if (def.quality === 'good') s.good_miss++;
         else if (def.quality === 'bad') s.bad_miss++;
-        else if (def.quality === 'stupid') s.stupid_miss++;
       }
     }
     switch (ev.type) {
@@ -1309,14 +1339,19 @@ function computeStats() {
       case 'chicken_out': s.chicken_out++; break;
       case 'box_out': s.box_out++; break;
       case 'no_box_out': s.no_box_out++; break;
+      case 'not_moving': s.not_moving++; break;
+      case 'body_language': s.body_language++; break;
       case 'deflection': s.deflection++; break;
       case 'lazy_d': s.lazy_d++; break;
       case 'bad_pos': s.bad_pos++; break;
       case 'blow_by': s.blow_by++; break;
       case 'yelled_at': s.yelled_at++; break;
+      case 'late_closeout': s.late_closeout++; break;
       case 'to_pass': s.to_pass++; break;
+      case 'to_picked': s.to_picked++; break;
       case 'to_handle': s.to_handle++; break;
       case 'to_swiped': s.to_swiped++; break;
+      case 'to_foot': s.to_foot++; break;
       case 'ptsa_1': s.ptsa_1++; break;
       case 'ptsa_2': s.ptsa_2++; break;
       case 'ptsa_3': s.ptsa_3++; break;
@@ -1333,13 +1368,11 @@ function computeStats() {
   s.fg_pct = s.fg_att ? Math.round(100 * s.fg_made / s.fg_att) : 0;
   s.good_total = s.good_made + s.good_miss;
   s.bad_total = s.bad_made + s.bad_miss;
-  s.stupid_total = s.stupid_made + s.stupid_miss;
   s.good_pct = s.good_total ? Math.round(100 * s.good_made / s.good_total) : 0;
   s.bad_pct = s.bad_total ? Math.round(100 * s.bad_made / s.bad_total) : 0;
-  s.stupid_pct = s.stupid_total ? Math.round(100 * s.stupid_made / s.stupid_total) : 0;
   s.reb_total = s.off_reb + s.def_reb;
-  s.to_total = s.to_pass + s.to_handle + s.to_swiped;
-  s.def_lapses = s.lazy_d + s.bad_pos + s.blow_by + s.yelled_at;
+  s.to_total = s.to_pass + s.to_picked + s.to_handle + s.to_swiped + s.to_foot;
+  s.def_lapses = s.lazy_d + s.bad_pos + s.blow_by + s.yelled_at + s.late_closeout;
   s.assists_total = s.assist_2 + s.assist_3;
   s.assist_pts = 2 * s.assist_2 + 3 * s.assist_3;
   s.pts_created = s.points + s.assist_pts;
@@ -1362,16 +1395,17 @@ function renderStats() {
     { cls: 'made', label: 'Assists', value: s.assists_total, detail: `${s.assist_2}×2 · ${s.assist_3}×3` },
     { cls: 'made', label: 'Good Shots', value: `${s.good_made}/${s.good_total}`, detail: s.good_total ? `${s.good_pct}%` : '&nbsp;' },
     { cls: 'miss', label: 'Bad Shots', value: `${s.bad_made}/${s.bad_total}`, detail: s.bad_total ? `${s.bad_pct}%` : '&nbsp;' },
-    { cls: 'to', label: 'Stupid Shots', value: `${s.stupid_made}/${s.stupid_total}`, detail: s.stupid_total ? `${s.stupid_pct}%` : '&nbsp;' },
     { cls: 'reb', label: 'Rebounds', value: s.reb_total, detail: `${s.off_reb} off · ${s.def_reb} def` },
     { cls: 'stl', label: 'Steals', value: s.steal, detail: '&nbsp;' },
     { cls: 'block', label: 'Blocks', value: s.block, detail: '&nbsp;' },
     { cls: 'stl', label: 'Deflections', value: s.deflection, detail: '&nbsp;' },
-    { cls: 'to', label: 'Turnovers', value: s.to_total, detail: `${s.to_pass} pass · ${s.to_handle} handle · ${s.to_swiped} swiped` },
-    { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yelled` },
+    { cls: 'to', label: 'Turnovers', value: s.to_total, detail: `${s.to_pass} bad · ${s.to_picked} ppo · ${s.to_handle} hndl · ${s.to_swiped} stol · ${s.to_foot} foot` },
+    { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yell · ${s.late_closeout} late` },
     { cls: 'made', label: 'Box Outs', value: s.box_out, detail: '&nbsp;' },
     { cls: 'miss', label: 'No Box Outs', value: s.no_box_out, detail: '&nbsp;' },
     { cls: 'miss', label: 'Chicken Outs', value: s.chicken_out, detail: '&nbsp;' },
+    { cls: 'miss', label: 'Not Moving', value: s.not_moving, detail: 'off ball' },
+    { cls: 'miss', label: 'Body Lang', value: s.body_language, detail: '&nbsp;' },
   ];
   const html = cards.map(c => `
     <div class="stat-card ${c.cls}">
@@ -1399,8 +1433,8 @@ function renderLog() {
       <div class="log-item">
         <span class="log-period">${ev.period || ''}</span>
         <span class="log-type">${def.label}</span>
-        <button class="log-nudge" data-nudge="${ev.id}" data-delta="-5" title="Roll back 5 seconds">−5</button>
-        <button class="log-nudge" data-nudge="${ev.id}" data-delta="5" title="Roll forward 5 seconds">+5</button>
+        <button class="log-nudge" data-nudge="${ev.id}" data-delta="-3" title="Roll back 3 seconds">−3</button>
+        <button class="log-nudge" data-nudge="${ev.id}" data-delta="3" title="Roll forward 3 seconds">+3</button>
         <span class="log-time-stack">
           <span class="log-time mono" data-seek="${ev.filmTimeSec || 0}" title="Jump video to this moment">${filmT}</span>
           <span class="game-time mono" title="Game clock">${gameT}</span>
@@ -1474,16 +1508,17 @@ function exportCSV() {
   rows.push(['Assists', s.assists_total, `${s.assist_2}×2 / ${s.assist_3}×3`]);
   rows.push(['Good Shots', `${s.good_made}/${s.good_total}`, s.good_total ? `${s.good_pct}%` : '']);
   rows.push(['Bad Shots', `${s.bad_made}/${s.bad_total}`, s.bad_total ? `${s.bad_pct}%` : '']);
-  rows.push(['Stupid Shots', `${s.stupid_made}/${s.stupid_total}`, s.stupid_total ? `${s.stupid_pct}%` : '']);
   rows.push(['Rebounds', s.reb_total, `${s.off_reb} off / ${s.def_reb} def`]);
   rows.push(['Steals', s.steal]);
   rows.push(['Blocks', s.block]);
   rows.push(['Deflections', s.deflection]);
-  rows.push(['Turnovers', s.to_total, `${s.to_pass} pass / ${s.to_handle} handle / ${s.to_swiped} swiped`]);
-  rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at`]);
+  rows.push(['Turnovers', s.to_total, `${s.to_pass} bad pass / ${s.to_picked} pass picked off / ${s.to_handle} lost handle / ${s.to_swiped} ball stolen / ${s.to_foot} foot fault`]);
+  rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at / ${s.late_closeout} late closeout`]);
   rows.push(['Box Outs', s.box_out]);
   rows.push(['No Box Outs', s.no_box_out]);
   rows.push(['Chicken Outs', s.chicken_out]);
+  rows.push(['Not Moving Off Ball', s.not_moving]);
+  rows.push(['Body Language', s.body_language]);
 
   const csv = rows.map(r => r.map(c => {
     const x = c == null ? '' : String(c);
@@ -1506,22 +1541,18 @@ function exportCSV() {
 // Voice recognition
 // ============================================================
 const VOICE_PATTERNS = [
-  // Brick → stupid 3pt miss
-  { test: /\b(brick|air ?ball|no rim|airball)\b/, action: () => logEvent('missed_3_stupid') },
+  // Brick → bad 3pt miss
+  { test: /\b(brick|air ?ball|no rim|airball)\b/, action: () => logEvent('missed_3_bad') },
   // 2PT shooting (quality + made/missed)
   { test: /\bgood made (two|to|too|2)\b/, action: () => logEvent('made_2_good') },
   { test: /\bgood (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_good') },
   { test: /\bbad made (two|to|too|2)\b/, action: () => logEvent('made_2_bad') },
   { test: /\bbad (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_bad') },
-  { test: /\bstupid made (two|to|too|2)\b/, action: () => logEvent('made_2_stupid') },
-  { test: /\bstupid (missed|miss) (two|to|too|2)\b/, action: () => logEvent('missed_2_stupid') },
   // 3PT shooting
   { test: /\bgood made (three|tree|3)\b/, action: () => logEvent('made_3_good') },
   { test: /\bgood (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_good') },
   { test: /\bbad made (three|tree|3)\b/, action: () => logEvent('made_3_bad') },
   { test: /\bbad (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_bad') },
-  { test: /\bstupid made (three|tree|3)\b/, action: () => logEvent('made_3_stupid') },
-  { test: /\bstupid (missed|miss) (three|tree|3)\b/, action: () => logEvent('missed_3_stupid') },
   // Free throws
   { test: /\bmade (one|1)\b/, action: () => logEvent('made_ft') },
   { test: /\bmade (the )?(free ?throw|freebie)\b/, action: () => logEvent('made_ft') },
@@ -1542,14 +1573,19 @@ const VOICE_PATTERNS = [
   { test: /\b(bad position|out of position|wrong spot|caught watching)\b/, action: () => logEvent('bad_pos') },
   { test: /\b(blow ?by|blew by|got beat)\b/, action: () => logEvent('blow_by') },
   { test: /\b(yelled at|coach yelled|got yelled)\b/, action: () => logEvent('yelled_at') },
+  { test: /\b(late closeout|no closeout|didn'?t close out|slow closeout)\b/, action: () => logEvent('late_closeout') },
   // Habits
   { test: /\b(chicken out|chickened out|shied away|shy of contact|avoided contact)\b/, action: () => logEvent('chicken_out') },
   { test: /\b(box out|boxed out|box him out|box her out|good box)\b/, action: () => logEvent('box_out') },
   { test: /\b(no box out|didn'?t box out|missed (the )?box out|failed (to )?box out)\b/, action: () => logEvent('no_box_out') },
+  { test: /\b(not moving|standing|spectating|off ball lazy|just watching)\b/, action: () => logEvent('not_moving') },
+  { test: /\b(body language|bad body language|pouting|head down|sulking)\b/, action: () => logEvent('body_language') },
   // Turnovers
-  { test: /\b(bad pass|picked off|intercepted)\b/, action: () => logEvent('to_pass') },
+  { test: /\b(bad pass|threw it away|errant pass)\b/, action: () => logEvent('to_pass') },
+  { test: /\b(p ?p ?o|pass picked off|picked off|intercepted)\b/, action: () => logEvent('to_picked') },
   { test: /\b(lost (it|handle|the ball|her dribble)|fumbled|dribble off)\b/, action: () => logEvent('to_handle') },
-  { test: /\b(ball swiped|swiped|stripped|knocked away)\b/, action: () => logEvent('to_swiped') },
+  { test: /\b(ball stolen|stole (it|the ball)|ball swiped|swiped|stripped|knocked away)\b/, action: () => logEvent('to_swiped') },
+  { test: /\b(foot fault|travel|traveling|double dribble|out of bounds|three seconds)\b/, action: () => logEvent('to_foot') },
   // PTSA
   { test: /\b(p ?t ?s ?a|points against|they scored) (one|1)\b/, action: () => logEvent('ptsa_1') },
   { test: /\b(p ?t ?s ?a|points against|they scored) (two|to|too|2)\b/, action: () => logEvent('ptsa_2') },
@@ -1616,14 +1652,14 @@ function startVoice() {
   voiceOn = true;
   try { recognition.start(); } catch (e) {}
   document.getElementById('voiceBtn').classList.add('on');
-  document.getElementById('voiceLabel').textContent = 'Voice On';
+  document.getElementById('voiceLabel').textContent = 'VOICE ON';
   document.getElementById('voiceStatus').classList.add('show');
 }
 function stopVoice() {
   voiceOn = false;
   if (recognition) { try { recognition.stop(); } catch (e) {} }
   document.getElementById('voiceBtn').classList.remove('on');
-  document.getElementById('voiceLabel').textContent = 'Voice Off';
+  document.getElementById('voiceLabel').textContent = 'VOICE OFF';
   document.getElementById('voiceStatus').classList.remove('show');
 }
 
@@ -1717,9 +1753,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', () => logEvent(btn.dataset.action));
   });
 
-  // Voice + Undo
+  // Voice + Undo + Film play button
   document.getElementById('voiceBtn').addEventListener('click', () => voiceOn ? stopVoice() : startVoice());
   document.getElementById('undoBtn').addEventListener('click', undoLast);
+  document.getElementById('filmPlayBtn').addEventListener('click', () => videoToggle());
 
   // Log delegation: seek, nudge, edit time, delete
   document.getElementById('logBody').addEventListener('click', (e) => {
