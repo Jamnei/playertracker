@@ -493,7 +493,7 @@
       <br>
       On/Off floor: <code>sub in</code> · <code>sub out</code>
       <br>
-      Game clock: <code>whistle</code> (toggles) · <code>start clock</code> · <code>begin clock</code> · <code>play clock</code> · <code>stop clock</code> · <code>pause clock</code> · <code>halt clock</code> · <code>reset clock</code>
+      Game clock: <code>start clock</code> · <code>begin clock</code> · <code>play clock</code> · <code>stop clock</code> · <code>pause clock</code> · <code>halt clock</code> · <code>reset clock</code>
       <br>
       Film: <code>play film</code> · <code>pause film</code>
       <br>
@@ -1249,24 +1249,15 @@ async function toggleOnOff() {
 // ============================================================
 // Logging events
 // ============================================================
-// Voice-trigger compensation: when a voice command is the source of an
-// event, the recorded film time is shifted 3 seconds earlier to compensate
-// for speech-recognition lag. Manual button/keyboard taps record the
-// current film time exactly. Set by handleVoiceText() before each pattern's
-// action runs and cleared after.
-let _voiceTriggered = false;
-const VOICE_LAG_SEC = 3;
-
 async function logEvent(actionType, opts = {}) {
   if (!ACTION_DEFS[actionType]) return;
   const def = ACTION_DEFS[actionType];
-  const filmT = _voiceTriggered ? Math.max(0, filmTimeSec - VOICE_LAG_SEC) : filmTimeSec;
   const ev = {
     id: 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     type: actionType,
     period: game.period,
-    filmTimeSec: filmT,
-    filmTime: fmtClock(filmT),
+    filmTimeSec: filmTimeSec,
+    filmTime: fmtClock(filmTimeSec),
     gameTimeSec: gameClockSec,
     gameTime: fmtClock(gameClockSec),
     loggedAt: Date.now(),
@@ -1277,9 +1268,6 @@ async function logEvent(actionType, opts = {}) {
   buzz(40);
   flashSuccess(def.label);
   render();
-  // Auto-scroll the tracker panel so the newest event stays in view
-  const panel = document.querySelector('.tracker-panel');
-  if (panel) panel.scrollTop = panel.scrollHeight;
 }
 
 async function undoLast() {
@@ -1456,8 +1444,7 @@ function renderLog() {
     body.innerHTML = '<div class="log-empty">No events yet. Tap a stat button or enable voice to start.</div>';
     return;
   }
-  // Chronological — oldest first, newest at the bottom
-  const items = [...game.events];
+  const items = [...game.events].reverse();
   const html = items.map(ev => {
     const def = ACTION_DEFS[ev.type] || { label: ev.type };
     const filmT = ev.filmTime || '00:00';
@@ -1630,8 +1617,6 @@ const VOICE_PATTERNS = [
   { test: /\b(start|begin|play|go|run) (the )?(game )?clock\b/, action: () => { if (!gameClockRunning) toggleGameClock(); } },
   { test: /\b(stop|pause|halt|kill|end) (the )?(game )?clock\b/, action: () => { if (gameClockRunning) toggleGameClock(); } },
   { test: /\breset (the )?(game )?clock\b/, action: () => resetGameClock() },
-  // "Whistle" — single word toggle, mimics the ref's whistle (stop on first, start on second)
-  { test: /\bwhistle\b/, action: () => toggleGameClock() },
   // Film control
   { test: /\b(play|start) (film|video)\b/, action: () => videoPlay() },
   { test: /\b(pause|stop) (film|video)\b/, action: () => videoPause() },
@@ -1670,8 +1655,7 @@ function initVoice() {
 function handleVoiceText(text) {
   for (const p of VOICE_PATTERNS) {
     if (p.test.test(text)) {
-      _voiceTriggered = true;
-      try { p.action(); } finally { _voiceTriggered = false; }
+      p.action();
       document.getElementById('voiceLast').textContent = '✓';
       setTimeout(() => { document.getElementById('voiceLast').textContent = ''; }, 800);
       return;
