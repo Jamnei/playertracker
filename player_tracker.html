@@ -1186,33 +1186,69 @@ function getOnOffState() {
   return 'off';
 }
 
-function getOnOffTime() {
-  if (!game || !game.events) return { onSec: 0, offSec: 0, isOn: false };
+// Period order — used to compute time across period boundaries
+const PERIOD_ORDER = {
+  quarters: ['Q1', 'Q2', 'Q3', 'Q4', 'OT'],
+  halves:   ['H1', 'H2', 'OT']
+};
+function periodIndex(p) {
+  const order = PERIOD_ORDER[(game && game.format) || 'quarters'];
+  return order ? order.indexOf(p) : -1;
+}
+
+// Played time between a sub_in event and a sub_out (or synthetic) event,
+// using game-clock seconds (countdown). Handles single-period and
+// period-spanning intervals.
+function playedBetween(subIn, subOut, periodLen) {
+  const inIdx = periodIndex(subIn.period);
+  const outIdx = periodIndex(subOut.period);
+  if (inIdx < 0 || outIdx < 0) return 0;
+  const inT  = subIn.gameTimeSec  || 0;
+  const outT = subOut.gameTimeSec || 0;
+  if (inIdx === outIdx) {
+    return Math.max(0, inT - outT);
+  }
+  if (inIdx < outIdx) {
+    let played = inT;                    // sub_in's period: from inT down to 0
+    for (let i = inIdx + 1; i < outIdx; i++) played += periodLen;  // full periods between
+    played += Math.max(0, periodLen - outT);                       // sub_out's period: from start to outT
+    return played;
+  }
+  return 0; // sub_out in earlier period than sub_in — data error
+}
+
+// Minutes Played, derived from the game clock. Counts only seconds where
+// the player was on the floor and the game clock was being run.
+function getMinutesPlayed() {
+  if (!game || !game.events) return { playedSec: 0, isOn: false };
+  const periodLen = game.periodLengthSec || 480;
   const events = game.events
     .filter(e => e.type === 'sub_in' || e.type === 'sub_out')
     .slice()
-    .sort((a, b) => (a.filmTimeSec || 0) - (b.filmTimeSec || 0));
-  let onSec = 0;
+    .sort((a, b) => (a.loggedAt || 0) - (b.loggedAt || 0));
+  let playedSec = 0;
   let lastSubIn = null;
   for (const e of events) {
-    const t = e.filmTimeSec || 0;
     if (e.type === 'sub_in') {
-      lastSubIn = t;
-    } else if (e.type === 'sub_out' && lastSubIn !== null) {
-      onSec += Math.max(0, t - lastSubIn);
+      lastSubIn = e;
+    } else if (e.type === 'sub_out' && lastSubIn) {
+      playedSec += playedBetween(lastSubIn, e, periodLen);
       lastSubIn = null;
     }
   }
   const isOn = lastSubIn !== null;
-  if (isOn) onSec += Math.max(0, filmTimeSec - lastSubIn);
-  const offSec = Math.max(0, filmTimeSec - onSec);
-  return { onSec, offSec, isOn };
+  if (isOn) {
+    // Currently on the floor — synthesize a "now" sub_out at the live game-clock value
+    const synth = { period: game.period, gameTimeSec: gameClockSec };
+    playedSec += playedBetween(lastSubIn, synth, periodLen);
+  }
+  return { playedSec, isOn };
 }
 
 function renderOnOff() {
   const btn = document.getElementById('onOffToggle');
   if (!btn) return;
-  const { onSec, offSec, isOn } = getOnOffTime();
+  const { playedSec, isOn } = getMinutesPlayed();
   btn.classList.toggle('on', isOn);
   btn.classList.toggle('off', !isOn);
   // Inline-style fallback in case CSS rules get overridden by anything
@@ -1234,7 +1270,7 @@ function renderOnOff() {
   }
   const timesEl = btn.querySelector('.on-off-times');
   if (timesEl) {
-    timesEl.textContent = `On ${fmtClock(onSec)} · Off ${fmtClock(offSec)}`;
+    timesEl.textContent = `Played ${fmtClock(playedSec)}`;
     timesEl.style.color = isOn ? 'rgba(255,255,255,0.85)' : '';
   }
   document.querySelectorAll('.action-btn.ptsa').forEach(b => b.classList.toggle('faded', !isOn));
@@ -1415,12 +1451,12 @@ function computeStats() {
 
 function renderStats() {
   const s = computeStats();
-  const { onSec, offSec } = getOnOffTime();
+  const { playedSec } = getMinutesPlayed();
   const cards = [
     { cls: 'ptsc', label: 'PTSC', value: s.pts_created, detail: `${s.points} scored · ${s.assist_pts} assisted` },
     { cls: 'made', label: 'Points', value: s.points, detail: `${s.fg_made}/${s.fg_att} FG · ${s.ft_made}/${s.ft_att} FT` },
     { cls: 'to', label: 'PTSA', value: s.ptsa_total, detail: `${s.ptsa_count} buckets given up` },
-    { cls: 'def', label: 'Floor Time', value: fmtClock(onSec), detail: `Off ${fmtClock(offSec)}` },
+    { cls: 'def', label: 'Minutes Played', value: fmtClock(playedSec), detail: 'game clock' },
     { cls: 'made', label: '2PT', value: `${s.fg2_made}/${s.fg2_att}`, detail: `${s.fg2_pct}%` },
     { cls: 'miss', label: '3PT', value: `${s.fg3_made}/${s.fg3_att}`, detail: `${s.fg3_pct}%` },
     { cls: 'made', label: 'FT', value: `${s.ft_made}/${s.ft_att}`, detail: `${s.ft_pct}%` },
@@ -1528,13 +1564,13 @@ function exportCSV() {
     ]);
   }
   const s = computeStats();
-  const { onSec, offSec } = getOnOffTime();
+  const { playedSec } = getMinutesPlayed();
   rows.push([]);
   rows.push(['SUMMARY']);
   rows.push(['PTSC (Pts Created)', s.pts_created, `${s.points} scored + ${s.assist_pts} assisted`]);
   rows.push(['Points', s.points]);
   rows.push(['PTSA', s.ptsa_total, `${s.ptsa_count} opponent buckets`]);
-  rows.push(['Floor Time', `On ${fmtClock(onSec)}`, `Off ${fmtClock(offSec)}`]);
+  rows.push(['Minutes Played', fmtClock(playedSec), '(from game clock)']);
   rows.push(['2PT', `${s.fg2_made}/${s.fg2_att}`, `${s.fg2_pct}%`]);
   rows.push(['3PT', `${s.fg3_made}/${s.fg3_att}`, `${s.fg3_pct}%`]);
   rows.push(['FT', `${s.ft_made}/${s.ft_att}`, `${s.ft_pct}%`]);
