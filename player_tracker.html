@@ -160,8 +160,17 @@
   .action-btn.to:active { background: rgba(241, 90, 34, 0.20); }
   .action-btn.stl { border-color: rgba(0, 47, 95, 0.30); background: rgba(0, 47, 95, 0.06); color: var(--navy); }
   .action-btn.stl:active { background: rgba(0, 47, 95, 0.18); }
-  .action-btn.block { border-color: rgba(46, 124, 48, 0.35); background: var(--made-soft); color: #1B5520; }
-  .action-btn.block:active { background: rgba(46, 124, 48, 0.22); }
+  .action-btn.block { border-color: rgba(0, 47, 95, 0.30); background: rgba(0, 47, 95, 0.06); color: var(--navy); }
+  .action-btn.block:active { background: rgba(0, 47, 95, 0.18); }
+  /* Ball-handling errors — visually distinct, dashed border, faded */
+  .action-btn.bh { border-color: rgba(75, 83, 88, 0.35); background: var(--paper-warm); border-style: dashed; color: var(--ink-soft); }
+  .action-btn.bh:active { background: var(--rule); color: var(--ink); }
+  /* Hustle Plays / Ball Handling — section sub-label */
+  .section-label .section-sub { font-size: 9px; letter-spacing: 0.06em; color: var(--ink-faint); text-transform: none; font-weight: 400; margin-left: 4px; }
+  .section-label.italic { font-style: italic; color: var(--ink-soft); }
+  /* Habits gets extra breathing room */
+  .btn-grid.habits-grid { gap: 10px; }
+  .btn-grid.habits-grid .action-btn { min-height: 56px; }
   .action-btn.assist { border-color: rgba(46, 124, 48, 0.45); background: var(--made-soft); color: #1B5520; }
   .action-btn.assist:active { background: rgba(46, 124, 48, 0.25); }
   .action-btn.habit { border-color: rgba(241, 90, 34, 0.35); background: var(--miss-soft); color: #7A2B12; }
@@ -348,9 +357,9 @@
 
     <div class="section">
       <div class="section-label">Habits</div>
-      <div class="btn-grid cols-3">
+      <div class="btn-grid cols-3 habits-grid">
         <button class="action-btn habit-pos" data-action="box_out">Box<span class="sub">Out</span></button>
-        <button class="action-btn habit" data-action="no_box_out">No Box<span class="sub">Out</span></button>
+        <button class="action-btn habit" data-action="no_box_out">Not<span class="sub">Blocking</span></button>
         <button class="action-btn habit" data-action="chicken_out">Chicken<span class="sub">Out</span></button>
         <button class="action-btn habit" data-action="not_moving">Not<span class="sub">Moving Off Ball</span></button>
         <button class="action-btn habit" data-action="body_language">Body<span class="sub">Language</span></button>
@@ -366,17 +375,19 @@
         <button class="action-btn def" data-action="yelled_at">Yelled<span class="sub">At by Coach</span></button>
         <button class="action-btn def" data-action="late_closeout">Late<span class="sub">Closeout</span></button>
         <button class="action-btn def" data-action="ora">ORA<span class="sub">Off Reb Allowed</span></button>
+        <button class="action-btn def" data-action="not_helping">Not<span class="sub">Helping</span></button>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-label">Rebounds, Steals, Blocks &amp; Deflections</div>
+      <div class="section-label">Hustle Plays<span class="section-sub">off reb · def reb · steal · block · deflection · press break</span></div>
       <div class="btn-grid cols-3">
         <button class="action-btn reb" data-action="off_reb">Off<span class="sub">Rebound</span></button>
         <button class="action-btn reb" data-action="def_reb">Def<span class="sub">Rebound</span></button>
         <button class="action-btn stl" data-action="steal">Steal</button>
         <button class="action-btn block" data-action="block">Block</button>
         <button class="action-btn stl" data-action="deflection">Deflection</button>
+        <button class="action-btn stl" data-action="press_break">Press<span class="sub">Break</span></button>
       </div>
     </div>
 
@@ -388,6 +399,11 @@
         <button class="action-btn to" data-action="to_handle">Lost<span class="sub">Handle</span></button>
         <button class="action-btn to" data-action="to_swiped">Ball<span class="sub">Stolen</span></button>
         <button class="action-btn to" data-action="to_foot">Foot<span class="sub">Fault</span></button>
+      </div>
+      <div class="section-label italic" style="margin-top: 10px;">Ball Handling Errors *<span class="section-sub">not counted in TO total</span></div>
+      <div class="btn-grid cols-2">
+        <button class="action-btn bh" data-action="bh_off_target">Pass *<span class="sub">Off Target</span></button>
+        <button class="action-btn bh" data-action="bh_bobbled">Bobbled *<span class="sub">Saved</span></button>
       </div>
     </div>
 
@@ -509,15 +525,17 @@
       <br>
       Free Throws: <code>made one</code> · <code>missed free throw</code>
       <br>
-      Assists: <code>assist two</code> · <code>assist three</code>
+      Assists: <code>assist two</code> · <code>assist three</code> · <code>dime two</code> · <code>dime three</code>
       <br>
-      Rebounds, Blocks &amp; Deflections: <code>off board</code> · <code>def board</code> · <code>block</code> · <code>deflection</code> · <code>tipped</code>
+      Hustle Plays: <code>off board</code> · <code>def board</code> · <code>block</code> · <code>deflection</code> · <code>tipped</code> · <code>press break</code>
       <br>
-      Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code> · <code>late closeout</code> · <code>ORA</code> · <code>aura</code>
+      Defense: <code>steal</code> · <code>lazy</code> · <code>bad position</code> · <code>blow by</code> · <code>yelled at</code> · <code>late closeout</code> · <code>ORA</code> · <code>aura</code> · <code>not helping</code> · <code>no rotation</code>
       <br>
-      Habits: <code>box out</code> · <code>no box out</code> · <code>chicken out</code> · <code>not moving</code> · <code>body language</code>
+      Habits: <code>box out</code> · <code>not blocking</code> · <code>chicken out</code> · <code>not moving</code> · <code>body language</code>
       <br>
       Turnovers: <code>bad pass</code> · <code>P P O</code> · <code>picked off</code> · <code>lost handle</code> · <code>ball stolen</code> · <code>foot fault</code> · <code>travel</code> · <code>out of bounds</code>
+      <br>
+      Ball Handling Errors* (not counted in TO total): <code>off target</code> · <code>bobbled</code> · <code>almost lost it</code>
       <br>
       PTSA: <code>they scored two</code> · <code>p t s a three</code>
       <br>
@@ -588,6 +606,12 @@ const ACTION_DEFS = {
   yelled_at: { label: 'Yelled At',       category: 'def' },
   late_closeout: { label: 'Late Closeout', category: 'def' },
   ora:           { label: 'ORA (Off Reb Allowed)', category: 'def' },
+  not_helping:   { label: 'Not Helping', category: 'def' },
+  // Hustle plays
+  press_break:   { label: 'Press Break', category: 'stl' },
+  // Ball handling errors — NOT counted as turnovers
+  bh_off_target: { label: 'Pass Off Target*', category: 'bh' },
+  bh_bobbled:    { label: 'Bobbled*', category: 'bh' },
   // Habits
   chicken_out:   { label: 'Chicken Out',          category: 'habit' },
   box_out:       { label: 'Box Out',              category: 'habit' },
@@ -1400,11 +1424,12 @@ function computeStats() {
     good_made: 0, good_miss: 0,
     bad_made: 0, bad_miss: 0,
     off_reb: 0, def_reb: 0,
-    steal: 0, block: 0, deflection: 0,
+    steal: 0, block: 0, deflection: 0, press_break: 0,
     assist_2: 0, assist_3: 0,
     chicken_out: 0, box_out: 0, no_box_out: 0, not_moving: 0, body_language: 0,
-    lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0, late_closeout: 0, ora: 0,
+    lazy_d: 0, bad_pos: 0, blow_by: 0, yelled_at: 0, late_closeout: 0, ora: 0, not_helping: 0,
     to_pass: 0, to_picked: 0, to_handle: 0, to_swiped: 0, to_foot: 0,
+    bh_off_target: 0, bh_bobbled: 0,
     ptsa_1: 0, ptsa_2: 0, ptsa_3: 0,
     points: 0
   };
@@ -1446,6 +1471,10 @@ function computeStats() {
       case 'yelled_at': s.yelled_at++; break;
       case 'late_closeout': s.late_closeout++; break;
       case 'ora': s.ora++; break;
+      case 'not_helping': s.not_helping++; break;
+      case 'press_break': s.press_break++; break;
+      case 'bh_off_target': s.bh_off_target++; break;
+      case 'bh_bobbled': s.bh_bobbled++; break;
       case 'to_pass': s.to_pass++; break;
       case 'to_picked': s.to_picked++; break;
       case 'to_handle': s.to_handle++; break;
@@ -1471,7 +1500,8 @@ function computeStats() {
   s.bad_pct = s.bad_total ? Math.round(100 * s.bad_made / s.bad_total) : 0;
   s.reb_total = s.off_reb + s.def_reb;
   s.to_total = s.to_pass + s.to_picked + s.to_handle + s.to_swiped + s.to_foot;
-  s.def_lapses = s.lazy_d + s.bad_pos + s.blow_by + s.yelled_at + s.late_closeout + s.ora;
+  s.def_lapses = s.lazy_d + s.bad_pos + s.blow_by + s.yelled_at + s.late_closeout + s.ora + s.not_helping;
+  s.bh_total = s.bh_off_target + s.bh_bobbled;
   s.assists_total = s.assist_2 + s.assist_3;
   s.assist_pts = 2 * s.assist_2 + 3 * s.assist_3;
   s.pts_created = s.points + s.assist_pts;
@@ -1498,8 +1528,10 @@ function renderStats() {
     { cls: 'stl', label: 'Steals', value: s.steal, detail: '&nbsp;' },
     { cls: 'block', label: 'Blocks', value: s.block, detail: '&nbsp;' },
     { cls: 'stl', label: 'Deflections', value: s.deflection, detail: '&nbsp;' },
+    { cls: 'stl', label: 'Press Breaks', value: s.press_break, detail: '&nbsp;' },
     { cls: 'to', label: 'Turnovers', value: s.to_total, detail: `${s.to_pass} bad · ${s.to_picked} ppo · ${s.to_handle} hndl · ${s.to_swiped} stol · ${s.to_foot} foot` },
-    { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yell · ${s.late_closeout} late · ${s.ora} ora` },
+    { cls: 'to', label: 'Ball Handling*', value: s.bh_total, detail: `${s.bh_off_target} off-target · ${s.bh_bobbled} bobbled` },
+    { cls: 'def', label: 'Def Lapses', value: s.def_lapses, detail: `${s.lazy_d} lazy · ${s.bad_pos} pos · ${s.blow_by} blow · ${s.yelled_at} yell · ${s.late_closeout} late · ${s.ora} ora · ${s.not_helping} no-help` },
     { cls: 'made', label: 'Box Outs', value: s.box_out, detail: '&nbsp;' },
     { cls: 'miss', label: 'No Box Outs', value: s.no_box_out, detail: '&nbsp;' },
     { cls: 'miss', label: 'Chicken Outs', value: s.chicken_out, detail: '&nbsp;' },
@@ -1613,7 +1645,9 @@ function exportCSV() {
   rows.push(['Blocks', s.block]);
   rows.push(['Deflections', s.deflection]);
   rows.push(['Turnovers', s.to_total, `${s.to_pass} bad pass / ${s.to_picked} pass picked off / ${s.to_handle} lost handle / ${s.to_swiped} ball stolen / ${s.to_foot} foot fault`]);
-  rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at / ${s.late_closeout} late closeout / ${s.ora} ORA`]);
+  rows.push(['Def Lapses', s.def_lapses, `${s.lazy_d} lazy / ${s.bad_pos} bad pos / ${s.blow_by} blow by / ${s.yelled_at} yelled at / ${s.late_closeout} late closeout / ${s.ora} ORA / ${s.not_helping} not helping`]);
+  rows.push(['Press Breaks', s.press_break]);
+  rows.push(['Ball Handling Errors*', s.bh_total, `${s.bh_off_target} off-target / ${s.bh_bobbled} bobbled (not in TO total)`]);
   rows.push(['Box Outs', s.box_out]);
   rows.push(['No Box Outs', s.no_box_out]);
   rows.push(['Chicken Outs', s.chicken_out]);
@@ -1661,6 +1695,8 @@ const VOICE_PATTERNS = [
   // Assists
   { test: /\bassist (two|to|too|2)\b/, action: () => logEvent('assist_2') },
   { test: /\bassist (three|tree|3)\b/, action: () => logEvent('assist_3') },
+  { test: /\bdime (two|to|too|2)\b/, action: () => logEvent('assist_2') },
+  { test: /\bdime (three|tree|3)\b/, action: () => logEvent('assist_3') },
   // Rebounds
   { test: /\b(off(ensive)? (board|rebound)|off ?reb|o ?reb)\b/, action: () => logEvent('off_reb') },
   { test: /\b(def(ensive)? (board|rebound)|def ?reb|d ?reb)\b/, action: () => logEvent('def_reb') },
@@ -1668,6 +1704,7 @@ const VOICE_PATTERNS = [
   { test: /\bsteal\b/, action: () => logEvent('steal') },
   { test: /\b(block|rejection|swat)\b/, action: () => logEvent('block') },
   { test: /\b(deflection|deflected|tipped|tip away)\b/, action: () => logEvent('deflection') },
+  { test: /\b(press break|broke (the )?press|broke pressure)\b/, action: () => logEvent('press_break') },
   // Defense issues
   { test: /\b(lazy|loafing|jogging back)\b/, action: () => logEvent('lazy_d') },
   { test: /\b(bad position|out of position|wrong spot|caught watching)\b/, action: () => logEvent('bad_pos') },
@@ -1675,10 +1712,11 @@ const VOICE_PATTERNS = [
   { test: /\b(yelled at|coach yelled|got yelled)\b/, action: () => logEvent('yelled_at') },
   { test: /\b(late closeout|no closeout|didn'?t close out|slow closeout)\b/, action: () => logEvent('late_closeout') },
   { test: /\b(ora|aura|offensive rebound allowed|gave up (the )?(board|rebound|o ?reb))\b/, action: () => logEvent('ora') },
+  { test: /\b(not helping|didn'?t help|no help|no rotation|failed to rotate)\b/, action: () => logEvent('not_helping') },
   // Habits
   { test: /\b(chicken out|chickened out|shied away|shy of contact|avoided contact)\b/, action: () => logEvent('chicken_out') },
   { test: /\b(box out|boxed out|box him out|box her out|good box)\b/, action: () => logEvent('box_out') },
-  { test: /\b(no box out|didn'?t box out|missed (the )?box out|failed (to )?box out)\b/, action: () => logEvent('no_box_out') },
+  { test: /\b(not blocking|didn'?t block out|no block out|failed to block out)\b/, action: () => logEvent('no_box_out') },
   { test: /\b(not moving|standing|spectating|off ball lazy|just watching)\b/, action: () => logEvent('not_moving') },
   { test: /\b(body language|bad body language|pouting|head down|sulking)\b/, action: () => logEvent('body_language') },
   // Turnovers
@@ -1687,6 +1725,9 @@ const VOICE_PATTERNS = [
   { test: /\b(lost (it|handle|the ball|her dribble)|fumbled|dribble off)\b/, action: () => logEvent('to_handle') },
   { test: /\b(ball stolen|stole (it|the ball)|ball swiped|swiped|stripped|knocked away)\b/, action: () => logEvent('to_swiped') },
   { test: /\b(foot fault|travel|traveling|double dribble|out of bounds|three seconds)\b/, action: () => logEvent('to_foot') },
+  // Ball handling errors (NOT counted as turnovers)
+  { test: /\b(off target|pass off target|wide pass|errant throw)\b/, action: () => logEvent('bh_off_target') },
+  { test: /\b(bobbled|bobble|almost lost (it|the ball)|near miss|saved (it|the ball))\b/, action: () => logEvent('bh_bobbled') },
   // PTSA
   { test: /\b(p ?t ?s ?a|points against|they scored) (one|1)\b/, action: () => logEvent('ptsa_1') },
   { test: /\b(p ?t ?s ?a|points against|they scored) (two|to|too|2)\b/, action: () => logEvent('ptsa_2') },
