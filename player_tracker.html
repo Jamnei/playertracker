@@ -104,6 +104,21 @@
   .clock-box.film .clock-time { color: var(--orange-deep); }
   .clock-box.game .clock-time { color: var(--navy); }
   .clock-box .clock-time.running { color: var(--made); }
+  /* Audio-detection warning: game time pulses orange when game audio is active but clock is paused */
+  .clock-box.game .clock-time.audio-warn {
+    animation: audioWarn 0.7s ease-in-out infinite;
+  }
+  @keyframes audioWarn {
+    0%, 100% { background: rgba(241, 90, 34, 0.10); color: var(--orange-deep); }
+    50%      { background: rgba(241, 90, 34, 0.45); color: var(--white); }
+  }
+  /* Review mode indicator on game clock: faded + italic when display is from timeline lookup vs live */
+  .clock-box.game.review .clock-time { font-style: italic; opacity: 0.78; }
+  .clock-box.game.review .clock-label::after {
+    content: ' · REVIEW';
+    color: var(--orange);
+    font-weight: 700;
+  }
   .clock-box .clock-controls { display: flex; gap: 4px; margin-top: 4px; align-items: center; }
   .clock-ctrl { background: var(--paper-warm); border: 1px solid var(--line); color: var(--ink-soft); width: 28px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
   .clock-ctrl:active { background: var(--rule); color: var(--ink); }
@@ -499,6 +514,10 @@
       <label for="voiceAutoResume">Auto-resume voice on page load</label>
       <input id="voiceAutoResume" type="checkbox" style="justify-self: start;">
     </div>
+    <div class="settings-row">
+      <label for="gameAudioMode">Game Audio mode (mic listens to speakers — flashes GAME TIME if play sounds detected while clock is paused)</label>
+      <input id="gameAudioMode" type="checkbox" style="justify-self: start;">
+    </div>
     <h3>Share &amp; Export</h3>
     <div class="modal-btn-row">
       <button class="modal-btn primary" id="shareGameBtn">Share This Game (Link)</button>
@@ -542,7 +561,7 @@
       <br>
       On/Off floor: <code>sub in</code> · <code>sub out</code>
       <br>
-      Game clock: <code>whistle</code> (toggles) · <code>start clock</code> · <code>begin clock</code> · <code>play clock</code> · <code>stop clock</code> · <code>pause clock</code> · <code>halt clock</code> · <code>reset clock</code>
+      Game clock: <code>whistle</code> (toggles) · <code>game on</code> (force start) · <code>start clock</code> · <code>begin clock</code> · <code>play clock</code> · <code>stop clock</code> · <code>pause clock</code> · <code>halt clock</code> · <code>reset clock</code>
       <br>
       Film: <code>play film</code> · <code>pause film</code>
       <br>
@@ -613,6 +632,8 @@ const ACTION_DEFS = {
   // Ball handling errors — NOT counted as turnovers
   bh_off_target: { label: 'Pass Off Target*', category: 'bh' },
   bh_bobbled:    { label: 'Bobbled*', category: 'bh' },
+  // Hidden / non-stat events (appear in event log only)
+  fuck_isla:     { label: 'Fuck Isla', category: 'misc', noStats: true },
   // Habits
   chicken_out:   { label: 'Chicken Out',          category: 'habit' },
   box_out:       { label: 'Box Out',              category: 'habit' },
@@ -979,9 +1000,17 @@ function applyGameToUI() {
   if (!validPeriods.includes(game.period)) game.period = validPeriods[0];
   renderPeriodSelect();
   periodLengthSec = game.periodLengthSec || (game.format === 'halves' ? 960 : 480);
-  gameClockSec = periodLengthSec;
-  gameClockRunning = false;
   if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
+  // Seed clock timeline if absent (older saved games)
+  if (!Array.isArray(game.clockTimeline)) game.clockTimeline = [];
+  if (game.clockTimeline.length === 0) {
+    game.clockTimeline.push({ filmTime: 0, gameClockSec: periodLengthSec, isRunning: false, period: game.period });
+  }
+  // Compute display from timeline at current film position
+  const cur = computeGameClockAt(filmTimeSec || 0);
+  gameClockSec = cur.sec;
+  gameClockRunning = cur.running;
+  liveFilmPosition = filmTimeSec || 0;
   renderGameClock();
   renderOnOff();
 }
@@ -1021,36 +1050,49 @@ function renderGameClock() {
   el.classList.toggle('running', gameClockRunning);
   const tog = document.getElementById('gameClockToggle');
   if (tog) tog.textContent = gameClockRunning ? '⏸' : '▶';
+  // Review-mode indicator on the game clock card
+  const box = document.querySelector('.clock-box.game');
+  if (box) box.classList.toggle('review', isReviewMode());
 }
 function toggleGameClock() {
-  gameClockRunning = !gameClockRunning;
+  // Compute current value from timeline (so we capture the right starting point if rewound)
+  const cur = computeGameClockAt(filmTimeSec);
+  gameClockRunning = !cur.running;
+  gameClockSec = cur.sec;
+  pushClockSnapshot(gameClockSec, gameClockRunning);
+  if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
   if (gameClockRunning) {
+    // Re-render every second so the displayed value stays fresh while video is paused
     gameClockInterval = setInterval(() => {
-      if (gameClockSec > 0) {
-        gameClockSec--;
-        renderGameClock();
-        if (gameClockSec === 0) {
-          gameClockRunning = false;
-          clearInterval(gameClockInterval);
-          buzz(200);
-          renderGameClock();
-        }
+      const c = computeGameClockAt(filmTimeSec);
+      gameClockSec = c.sec;
+      gameClockRunning = c.running;
+      renderGameClock();
+      if (gameClockSec === 0 && !c.running) {
+        clearInterval(gameClockInterval);
+        gameClockInterval = null;
+        buzz(200);
       }
     }, 1000);
-  } else {
-    clearInterval(gameClockInterval);
   }
   renderGameClock();
+  saveGame();
 }
 function resetGameClock() {
   gameClockRunning = false;
   if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
   gameClockSec = periodLengthSec;
+  pushClockSnapshot(gameClockSec, false);
   renderGameClock();
+  saveGame();
 }
 function bumpGameClock(deltaSec) {
-  gameClockSec = Math.max(0, gameClockSec + deltaSec);
+  const cur = computeGameClockAt(filmTimeSec);
+  gameClockSec = Math.max(0, cur.sec + deltaSec);
+  gameClockRunning = cur.running;
+  pushClockSnapshot(gameClockSec, gameClockRunning);
   renderGameClock();
+  saveGame();
 }
 function setupHoldRepeat(buttonId, fn, initialDelay = 400, repeatRate = 100) {
   const btn = document.getElementById(buttonId);
@@ -1145,6 +1187,16 @@ function videoSeek(sec) {
   if (video.type === 'local' && video.el) video.el.currentTime = Math.max(0, sec);
   if (video.type === 'youtube' && video.ytPlayer && video.ytPlayer.seekTo) video.ytPlayer.seekTo(Math.max(0, sec), true);
 }
+// Rewind by N seconds. Game clock follows automatically because updateFilmClock
+// recomputes it from the timeline at the new film position.
+function rewindFilm(seconds) {
+  const cur = videoCurrentTime();
+  const target = Math.max(0, cur - seconds);
+  videoSeek(target);
+  filmTimeSec = target;
+  updateFilmClock();
+  toast(`Rewind ${seconds}s`, 'success');
+}
 
 function loadLocalVideo(file) {
   videoCleanup();
@@ -1213,6 +1265,8 @@ async function loadYouTube(urlOrId) {
 function updateFilmClock() {
   filmTimeSec = videoCurrentTime();
   const playing = videoIsPlaying();
+  // Track live position as the highest film time we've reached during normal play
+  if (playing && filmTimeSec > liveFilmPosition) liveFilmPosition = filmTimeSec;
   const el = document.getElementById('filmTime');
   if (el) {
     el.textContent = fmtClock(filmTimeSec);
@@ -1227,6 +1281,11 @@ function updateFilmClock() {
     const lbl = fpBtn.querySelector('.top-ctrl-label');
     if (lbl) lbl.textContent = playing ? 'PAUSE FILM' : 'PLAY FILM';
   }
+  // Recompute game clock from timeline at current film position (smart sync)
+  const cur = computeGameClockAt(filmTimeSec);
+  gameClockSec = cur.sec;
+  gameClockRunning = cur.running;
+  renderGameClock();
   renderOnOff();
 }
 
@@ -1275,6 +1334,64 @@ function playedBetween(subIn, subOut, periodLen) {
 
 // Minutes Played, derived from the game clock. Counts only seconds where
 // the player was on the floor and the game clock was being run.
+// ============================================================
+// Game-clock timeline (smart sync to film time)
+// ----------------------------------------------------------------
+// Every game-clock state change (start, stop, reset, edit, period
+// change, +/-1 nudge, period-length change) pushes a snapshot:
+//   { filmTime, gameClockSec, isRunning }
+// To compute the game clock at any film time, we find the latest
+// snapshot whose filmTime is ≤ the queried time. If that snapshot
+// was running, subtract the elapsed film seconds. If paused, just
+// use the snapshot's value. This makes the displayed game clock
+// follow the film position correctly when scrubbing or rewinding,
+// including the new a/s rewind keys and the YouTube scrub bar.
+// ============================================================
+function pushClockSnapshot(sec, running) {
+  if (!game) return;
+  if (!Array.isArray(game.clockTimeline)) game.clockTimeline = [];
+  game.clockTimeline.push({
+    filmTime: filmTimeSec || 0,
+    gameClockSec: Math.max(0, Math.floor(sec)),
+    isRunning: !!running,
+    period: game.period
+  });
+  // Keep timeline sorted by filmTime so lookups are simple
+  game.clockTimeline.sort((a, b) => (a.filmTime || 0) - (b.filmTime || 0));
+}
+
+function computeGameClockAt(queryFilmTime) {
+  const tl = (game && game.clockTimeline) || [];
+  if (tl.length === 0) {
+    return { sec: (game && game.periodLengthSec) || 480, running: false };
+  }
+  // Find the latest snapshot whose filmTime is ≤ queryFilmTime
+  let latest = null;
+  for (const snap of tl) {
+    if (snap.filmTime <= queryFilmTime + 0.5) latest = snap;
+    else break;
+  }
+  if (!latest) {
+    return { sec: (game && game.periodLengthSec) || 480, running: false };
+  }
+  if (!latest.isRunning) {
+    return { sec: latest.gameClockSec, running: false };
+  }
+  const elapsed = queryFilmTime - latest.filmTime;
+  return {
+    sec: Math.max(0, Math.floor(latest.gameClockSec - elapsed)),
+    running: true
+  };
+}
+
+// "Live" = the largest film time we've seen during normal playback.
+// We treat any film-time queries below liveFilmPosition - 1.5s as
+// "review mode" so the UI can give a visual cue.
+let liveFilmPosition = 0;
+function isReviewMode() {
+  return filmTimeSec < liveFilmPosition - 1.5;
+}
+
 function getMinutesPlayed() {
   if (!game || !game.events) return { playedSec: 0, isOn: false };
   const periodLen = game.periodLengthSec || 480;
@@ -1341,26 +1458,37 @@ async function toggleOnOff() {
 // ============================================================
 // Logging events
 // ============================================================
-// Voice-trigger compensation: when a voice command is the source of an
-// event, the recorded film time is shifted 3 seconds earlier to compensate
-// for speech-recognition lag. Manual button/keyboard taps record the
-// current film time exactly. Set by handleVoiceText() before each pattern's
-// action runs and cleared after.
+// Voice-trigger timestamp accuracy: when the speech recognizer sees the FIRST
+// interim text of a new utterance, snapshot the current film time and game
+// clock state. When the final result lands later (after speech-recognition
+// processing) and triggers an event, we use those snapshotted values instead
+// of the current values — eliminates speech-recognition lag without a hard
+// offset. Manual button/keyboard taps still record the live film time.
 let _voiceTriggered = false;
-const VOICE_LAG_SEC = 3;
+let _voiceSnapshot = null; // { filmTimeSec, gameClockSec }
 
 async function logEvent(actionType, opts = {}) {
   if (!ACTION_DEFS[actionType]) return;
   const def = ACTION_DEFS[actionType];
-  const filmT = _voiceTriggered ? Math.max(0, filmTimeSec - VOICE_LAG_SEC) : filmTimeSec;
+  // For voice-triggered events, use the snapshot taken when speech began.
+  // Otherwise use the timeline-computed game clock at the current film time.
+  let filmT, gameT;
+  if (_voiceTriggered && _voiceSnapshot) {
+    filmT = _voiceSnapshot.filmTimeSec;
+    gameT = _voiceSnapshot.gameClockSec;
+  } else {
+    filmT = filmTimeSec;
+    const cur = computeGameClockAt(filmTimeSec);
+    gameT = cur.sec;
+  }
   const ev = {
     id: 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     type: actionType,
     period: game.period,
     filmTimeSec: filmT,
     filmTime: fmtClock(filmT),
-    gameTimeSec: gameClockSec,
-    gameTime: fmtClock(gameClockSec),
+    gameTimeSec: gameT,
+    gameTime: fmtClock(gameT),
     loggedAt: Date.now(),
     modifiers: {}
   };
@@ -1437,6 +1565,7 @@ function computeStats() {
   for (const ev of game.events) {
     const def = ACTION_DEFS[ev.type];
     if (!def) continue;
+    if (def.noStats) continue;  // hidden non-stat events do not affect summaries
     if (def.pts) s.points += def.pts;
     if (ev.type.indexOf('made_2') === 0) s.fg2_made++;
     else if (ev.type.indexOf('missed_2') === 0) s.fg2_miss++;
@@ -1742,6 +1871,10 @@ const VOICE_PATTERNS = [
   { test: /\breset (the )?(game )?clock\b/, action: () => resetGameClock() },
   // "Whistle" — single word toggle, mimics the ref's whistle (stop on first, start on second)
   { test: /\bwhistle\b/, action: () => toggleGameClock() },
+  // "Game on" — safety phrase that explicitly STARTS the clock if paused (no toggle)
+  { test: /\bgame on\b/, action: () => { if (!gameClockRunning) toggleGameClock(); } },
+  // Hidden non-stat event — appears in event log only, not in summaries
+  { test: /\b(fuck isla|eye[- ]?lah|eyelah|isla)\b/, action: () => logEvent('fuck_isla') },
   // Film control
   { test: /\b(play|start) (film|video)\b/, action: () => videoPlay() },
   { test: /\b(pause|stop) (film|video)\b/, action: () => videoPause() },
@@ -1763,8 +1896,20 @@ function initVoice() {
       if (r.isFinal) finalText += r[0].transcript + ' ';
       else interim += r[0].transcript + ' ';
     }
+    // Snapshot film time and game clock the moment first interim text appears
+    // for an utterance — this gives us the actual moment speech started, not
+    // the moment the recognizer finished processing.
+    if (interim && !_voiceSnapshot) {
+      _voiceSnapshot = {
+        filmTimeSec: filmTimeSec,
+        gameClockSec: computeGameClockAt(filmTimeSec).sec
+      };
+    }
     document.getElementById('voiceHeard').textContent = (finalText || interim).slice(-60);
-    if (finalText) handleVoiceText(finalText.toLowerCase());
+    if (finalText) {
+      handleVoiceText(finalText.toLowerCase());
+      _voiceSnapshot = null;  // reset for next utterance
+    }
   };
   rec.onerror = (e) => {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
@@ -1787,6 +1932,72 @@ function handleVoiceText(text) {
       return;
     }
   }
+}
+
+// ============================================================
+// Game Audio mode — Phase 1 (passive warning flash)
+// ----------------------------------------------------------------
+// Taps the mic stream via Web Audio API to detect whether play sounds
+// are active (rolling RMS amplitude above threshold). When the game
+// clock is PAUSED but audio detection thinks play is happening, the
+// GAME TIME box flashes orange as a nudge. Only works if the user is
+// playing video through external speakers (so the mic can hear it).
+// Headphones defeat this entirely — that's why it's an explicit toggle.
+// ============================================================
+let gameAudio = {
+  ctx: null, analyser: null, source: null, stream: null,
+  intervalId: null, rollingRms: 0, active: false
+};
+const GAME_AUDIO_THRESHOLD = 0.04; // tunable; ~background noise floor
+
+async function startGameAudio() {
+  if (gameAudio.ctx) return;
+  try {
+    gameAudio.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    gameAudio.ctx = new Ctx();
+    gameAudio.source = gameAudio.ctx.createMediaStreamSource(gameAudio.stream);
+    gameAudio.analyser = gameAudio.ctx.createAnalyser();
+    gameAudio.analyser.fftSize = 512;
+    gameAudio.source.connect(gameAudio.analyser);
+    gameAudio.intervalId = setInterval(checkGameAudio, 200);
+    toast('Game Audio mode ON', 'success');
+  } catch (e) {
+    toast('Microphone access denied for Game Audio', 'error');
+    stopGameAudio();
+  }
+}
+
+function stopGameAudio() {
+  if (gameAudio.intervalId) clearInterval(gameAudio.intervalId);
+  if (gameAudio.source) try { gameAudio.source.disconnect(); } catch (e) {}
+  if (gameAudio.ctx) try { gameAudio.ctx.close(); } catch (e) {}
+  if (gameAudio.stream) try { gameAudio.stream.getTracks().forEach(t => t.stop()); } catch (e) {}
+  gameAudio = { ctx: null, analyser: null, source: null, stream: null, intervalId: null, rollingRms: 0, active: false };
+  // Clear any flashing
+  const el = document.getElementById('gameClockTime');
+  if (el) el.classList.remove('audio-warn');
+}
+
+function checkGameAudio() {
+  if (!gameAudio.analyser) return;
+  const buf = new Uint8Array(gameAudio.analyser.fftSize);
+  gameAudio.analyser.getByteTimeDomainData(buf);
+  // RMS amplitude (1.0 = max, ~0.0 = silence)
+  let sum = 0;
+  for (let i = 0; i < buf.length; i++) {
+    const v = (buf[i] - 128) / 128;
+    sum += v * v;
+  }
+  const rms = Math.sqrt(sum / buf.length);
+  // Smooth so single bursts don't flicker
+  gameAudio.rollingRms = gameAudio.rollingRms * 0.75 + rms * 0.25;
+  const audioActive = gameAudio.rollingRms > GAME_AUDIO_THRESHOLD;
+  // Flash GAME TIME if audio suggests play is happening but clock isn't running
+  const el = document.getElementById('gameClockTime');
+  if (!el) return;
+  const shouldWarn = audioActive && !gameClockRunning;
+  el.classList.toggle('audio-warn', shouldWarn);
 }
 
 function startVoice() {
@@ -1818,6 +2029,7 @@ async function openMenu() {
   renderGameList();
   document.getElementById('periodLengthInput').value = fmtClock(periodLengthSec);
   document.getElementById('voiceAutoResume').checked = await getSetting('voiceAutoResume', false);
+  document.getElementById('gameAudioMode').checked = await getSetting('gameAudioMode', false);
   document.getElementById('formatSelect').value = (game && game.format) || 'quarters';
   showModal('menuModal');
 }
@@ -1853,6 +2065,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (await getSetting('voiceAutoResume', false)) {
     setTimeout(() => { try { startVoice(); } catch (e) {} }, 600);
   }
+  if (await getSetting('gameAudioMode', false)) {
+    setTimeout(() => { try { startGameAudio(); } catch (e) {} }, 800);
+  }
 
   // Game name
   const nameInput = document.getElementById('gameName');
@@ -1869,10 +2084,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     game.period = btn.dataset.period;
-    await saveGame();
     gameClockSec = periodLengthSec;
     gameClockRunning = false;
     if (gameClockInterval) { clearInterval(gameClockInterval); gameClockInterval = null; }
+    pushClockSnapshot(periodLengthSec, false);
+    await saveGame();
     renderGameClock();
   });
 
@@ -1946,8 +2162,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       filmTimeSec = sec;
       updateFilmClock();
     } else if (editingEventId === null) {
+      // Manual game-clock edit: push a snapshot so the timeline stays accurate
       gameClockSec = sec;
+      pushClockSnapshot(sec, gameClockRunning);
       renderGameClock();
+      saveGame();
     } else {
       await editEventTime(editingEventId, v);
     }
@@ -1992,6 +2211,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('voiceAutoResume').addEventListener('change', async (e) => {
     await setSetting('voiceAutoResume', e.target.checked);
     toast(e.target.checked ? 'Voice will auto-resume on load' : 'Auto-resume off', 'success');
+  });
+  document.getElementById('gameAudioMode').addEventListener('change', async (e) => {
+    await setSetting('gameAudioMode', e.target.checked);
+    if (e.target.checked) await startGameAudio();
+    else stopGameAudio();
   });
   document.getElementById('clearGameBtn').addEventListener('click', async () => {
     if (!confirm('Clear ALL events from this game? This cannot be undone.')) return;
@@ -2084,7 +2308,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const map = {
       't': 'made_ft', 'y': 'missed_ft',
       'q': 'block',
-      'a': 'off_reb', 's': 'def_reb',
+      'f': 'off_reb', 'e': 'def_reb',  // rebounds (moved from a/s)
       'd': 'steal',
       'h': 'chicken_out', 'j': 'box_out', 'k': 'no_box_out', 'l': 'deflection',
       'z': 'lazy_d', 'x': 'bad_pos', 'c': 'blow_by', 'v': 'yelled_at',
@@ -2093,9 +2317,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     const k = e.key.toLowerCase();
     if (map[k]) { e.preventDefault(); logEvent(map[k]); return; }
+    // a/s = rewind film 3s / 5s (game clock follows via timeline lookup)
+    if (k === 'a') { e.preventDefault(); rewindFilm(3); return; }
+    if (k === 's') { e.preventDefault(); rewindFilm(5); return; }
     if (k === 'u') { e.preventDefault(); undoLast(); return; }
     if (k === 'o') { e.preventDefault(); toggleOnOff(); return; }
     if (k === 'g') { e.preventDefault(); toggleGameClock(); return; }
+    if (k === 'tab') { e.preventDefault(); toggleGameClock(); return; }
     if (k === ' ') { e.preventDefault(); videoToggle(); return; }
   });
 });
