@@ -1665,29 +1665,30 @@ async function toggleOnOff() {
 // ============================================================
 // Logging events
 // ============================================================
-// Voice-trigger timestamp accuracy: when the speech recognizer sees the FIRST
-// interim text of a new utterance, snapshot the current film time and game
-// clock state. When the final result lands later (after speech-recognition
-// processing) and triggers an event, we use those snapshotted values instead
-// of the current values — eliminates speech-recognition lag without a hard
-// offset. Manual button/keyboard taps still record the live film time.
+// Voice-trigger timestamp offset: when an event is logged from a voice
+// command, the recorded film time is shifted back by VOICE_LAG_SEC seconds
+// to account for the gap between the moment of action and the moment the
+// recognizer registers the command. Game time is then looked up from the
+// timeline at that offset film time, so it correctly accounts for whether
+// the game clock was running or paused during the offset window.
+// Manual button/keyboard taps record the live film time exactly.
 let _voiceTriggered = false;
-let _voiceSnapshot = null; // { filmTimeSec, gameClockSec }
+const VOICE_LAG_SEC = 5;
 
 async function logEvent(actionType, opts = {}) {
   if (!ACTION_DEFS[actionType]) return;
   const def = ACTION_DEFS[actionType];
-  // For voice-triggered events, use the snapshot taken when speech began.
-  // Otherwise use the timeline-computed game clock at the current film time.
+  // Voice-triggered events are timestamped VOICE_LAG_SEC seconds before
+  // registration to compensate for speech-recognition lag. Game time is
+  // looked up from the timeline at that offset point so it's accurate.
+  // Manual taps use the current film time exactly.
   let filmT, gameT;
-  if (_voiceTriggered && _voiceSnapshot) {
-    filmT = _voiceSnapshot.filmTimeSec;
-    gameT = _voiceSnapshot.gameClockSec;
+  if (_voiceTriggered) {
+    filmT = Math.max(0, filmTimeSec - VOICE_LAG_SEC);
   } else {
     filmT = filmTimeSec;
-    const cur = computeGameClockAt(filmTimeSec);
-    gameT = cur.sec;
   }
+  gameT = computeGameClockAt(filmT).sec;
   const ev = {
     id: 'e_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6),
     type: actionType,
@@ -2103,20 +2104,8 @@ function initVoice() {
       if (r.isFinal) finalText += r[0].transcript + ' ';
       else interim += r[0].transcript + ' ';
     }
-    // Snapshot film time and game clock the moment first interim text appears
-    // for an utterance — this gives us the actual moment speech started, not
-    // the moment the recognizer finished processing.
-    if (interim && !_voiceSnapshot) {
-      _voiceSnapshot = {
-        filmTimeSec: filmTimeSec,
-        gameClockSec: computeGameClockAt(filmTimeSec).sec
-      };
-    }
     document.getElementById('voiceHeard').textContent = (finalText || interim).slice(-60);
-    if (finalText) {
-      handleVoiceText(finalText.toLowerCase());
-      _voiceSnapshot = null;  // reset for next utterance
-    }
+    if (finalText) handleVoiceText(finalText.toLowerCase());
   };
   rec.onerror = (e) => {
     if (e.error === 'no-speech' || e.error === 'aborted') return;
