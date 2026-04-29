@@ -500,10 +500,22 @@
     <h2>Menu</h2>
     <h3>Game Settings</h3>
     <div class="settings-row">
-      <label for="formatSelect">Game format</label>
+      <label for="presetSelect">Preset</label>
+      <select id="presetSelect" class="modal-input mono" style="margin-bottom: 0;">
+        <option value="quarters_6">Quarters · 4 × 6:00 (youth)</option>
+        <option value="quarters_8">Quarters · 4 × 8:00 (HS, AAU)</option>
+        <option value="quarters_10">Quarters · 4 × 10:00 (NCAA W, FIBA)</option>
+        <option value="quarters_12">Quarters · 4 × 12:00 (NBA)</option>
+        <option value="halves_16">Halves · 2 × 16:00 (travel ball)</option>
+        <option value="halves_20">Halves · 2 × 20:00 (NCAA M)</option>
+        <option value="custom">Custom (use Format + Length below)</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label for="formatSelect">Format</label>
       <select id="formatSelect" class="modal-input mono" style="margin-bottom: 0;">
-        <option value="quarters">Quarters (4 × 8:00)</option>
-        <option value="halves">Halves (2 × 16:00)</option>
+        <option value="quarters">Quarters</option>
+        <option value="halves">Halves</option>
       </select>
     </div>
     <div class="settings-row">
@@ -2031,6 +2043,25 @@ async function openMenu() {
   document.getElementById('voiceAutoResume').checked = await getSetting('voiceAutoResume', false);
   document.getElementById('gameAudioMode').checked = await getSetting('gameAudioMode', false);
   document.getElementById('formatSelect').value = (game && game.format) || 'quarters';
+  // Set preset to whatever matches the current format+length, or 'custom' if no match
+  const presetSel = document.getElementById('presetSelect');
+  if (presetSel) {
+    const PRESETS_LOCAL = {
+      quarters_6:  { format: 'quarters', sec: 360 },
+      quarters_8:  { format: 'quarters', sec: 480 },
+      quarters_10: { format: 'quarters', sec: 600 },
+      quarters_12: { format: 'quarters', sec: 720 },
+      halves_16:   { format: 'halves',   sec: 960 },
+      halves_20:   { format: 'halves',   sec: 1200 }
+    };
+    const fmt = (game && game.format) || 'quarters';
+    const len = (game && game.periodLengthSec) || 480;
+    let match = 'custom';
+    for (const [key, p] of Object.entries(PRESETS_LOCAL)) {
+      if (p.format === fmt && p.sec === len) { match = key; break; }
+    }
+    presetSel.value = match;
+  }
   showModal('menuModal');
 }
 function closeMenu() { hideModal('menuModal'); }
@@ -2193,20 +2224,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('shareGameBtn').addEventListener('click', shareGameLink);
   document.getElementById('exportSingleGameBtn').addEventListener('click', exportThisGame);
+  // PRESET: choosing a preset sets BOTH format and period length together.
+  // The two fields below ("Format" and "Period length") remain independent
+  // for users who want to mix-and-match (Custom).
+  const PRESETS = {
+    quarters_6:  { format: 'quarters', sec: 360 },
+    quarters_8:  { format: 'quarters', sec: 480 },
+    quarters_10: { format: 'quarters', sec: 600 },
+    quarters_12: { format: 'quarters', sec: 720 },
+    halves_16:   { format: 'halves',   sec: 960 },
+    halves_20:   { format: 'halves',   sec: 1200 }
+  };
+  function matchingPreset() {
+    if (!game) return 'custom';
+    const fmt = game.format || 'quarters';
+    const len = game.periodLengthSec || 480;
+    for (const [key, p] of Object.entries(PRESETS)) {
+      if (p.format === fmt && p.sec === len) return key;
+    }
+    return 'custom';
+  }
+  document.getElementById('presetSelect').addEventListener('change', async (e) => {
+    if (!game) return;
+    const key = e.target.value;
+    if (key === 'custom') {
+      // No-op — user wants to set Format and Length manually below
+      return;
+    }
+    const p = PRESETS[key];
+    if (!p) return;
+    game.format = p.format;
+    game.periodLengthSec = p.sec;
+    periodLengthSec = p.sec;
+    gameClockSec = p.sec;
+    const validPeriods = game.format === 'halves' ? ['H1','H2','OT'] : ['Q1','Q2','Q3','Q4','OT'];
+    if (!validPeriods.includes(game.period)) game.period = validPeriods[0];
+    pushClockSnapshot(p.sec, false);
+    await saveGame();
+    renderPeriodSelect();
+    renderGameClock();
+    document.getElementById('formatSelect').value = game.format;
+    document.getElementById('periodLengthInput').value = fmtClock(p.sec);
+    toast(`Preset: ${game.format} ${fmtClock(p.sec)}`, 'success');
+  });
+
+  // FORMAT alone: changes only the period buttons (Q1-Q4 vs H1-H2). Does NOT
+  // reset the period length anymore — that's the user's separate choice below.
   document.getElementById('formatSelect').addEventListener('change', async (e) => {
     if (!game) return;
     game.format = e.target.value;
-    const defaultLen = game.format === 'halves' ? 960 : 480;
-    game.periodLengthSec = defaultLen;
-    periodLengthSec = defaultLen;
-    gameClockSec = defaultLen;
     const validPeriods = game.format === 'halves' ? ['H1','H2','OT'] : ['Q1','Q2','Q3','Q4','OT'];
     if (!validPeriods.includes(game.period)) game.period = validPeriods[0];
     await saveGame();
     renderPeriodSelect();
-    renderGameClock();
-    document.getElementById('periodLengthInput').value = fmtClock(periodLengthSec);
-    toast(`Format set to ${game.format} (${fmtClock(defaultLen)} per period)`, 'success');
+    document.getElementById('presetSelect').value = matchingPreset();
+    toast(`Format set to ${game.format}`, 'success');
   });
   document.getElementById('voiceAutoResume').addEventListener('change', async (e) => {
     await setSetting('voiceAutoResume', e.target.checked);
@@ -2231,8 +2303,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     periodLengthSec = sec;
     game.periodLengthSec = sec;
     gameClockSec = sec;
+    pushClockSnapshot(sec, false);
     await saveGame();
     renderGameClock();
+    document.getElementById('presetSelect').value = matchingPreset();
     toast(`Period set to ${fmtClock(sec)}`, 'success');
   });
   document.getElementById('gameList').addEventListener('click', async (e) => {
