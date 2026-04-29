@@ -73,9 +73,17 @@
   .tracker-panel { width: 340px; flex: 0 0 340px; padding: 12px; padding-bottom: env(safe-area-inset-bottom, 12px); overflow-y: auto; max-height: 100vh; background: var(--paper); }
 
   /* Header */
-  .header { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--orange); }
-  .game-name { background: transparent; border: none; color: var(--navy-deep); font-family: var(--display); font-weight: 700; font-size: 22px; letter-spacing: 0.02em; padding: 2px 0; outline: none; min-width: 0; width: 100%; text-transform: uppercase; }
+  .header { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--orange); }
+  .game-name-stack { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .resume-badge { display: inline-block; background: var(--orange); color: var(--white); font-family: var(--display); font-size: 9px; font-weight: 700; letter-spacing: 0.18em; padding: 2px 6px; border-radius: 3px; align-self: flex-start; text-transform: uppercase; margin-bottom: 2px; }
+  .resume-badge.hidden { display: none; }
+  .game-name { background: transparent; border: none; color: var(--navy-deep); font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: 0.02em; padding: 2px 0; outline: none; min-width: 0; width: 100%; text-transform: uppercase; }
   .game-name:focus { color: var(--orange); }
+  .player-name { background: transparent; border: none; color: var(--ink-soft); font-family: var(--body); font-weight: 500; font-size: 11px; padding: 0; outline: none; min-width: 0; width: 100%; letter-spacing: 0.05em; }
+  .player-name:focus { color: var(--orange); }
+  .player-name::placeholder { color: var(--ink-faint); font-style: italic; }
+  .new-game-btn { background: var(--orange); border: 1px solid var(--orange); color: var(--white); width: 36px; height: 36px; border-radius: 4px; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--shadow-sm); font-family: var(--display); font-weight: 700; }
+  .new-game-btn:active { background: var(--orange-deep); }
   .menu-btn { background: var(--white); border: 1px solid var(--line); color: var(--navy); width: 36px; height: 36px; border-radius: 4px; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--shadow-sm); }
   .menu-btn:active { background: var(--paper-warm); }
 
@@ -321,7 +329,12 @@
   <div class="tracker-panel">
 
     <div class="header">
-      <input class="game-name" id="gameName" type="text" placeholder="Game name…" maxlength="60">
+      <div class="game-name-stack">
+        <span class="resume-badge hidden" id="resumeBadge">📌 Resumed from last session</span>
+        <input class="game-name" id="gameName" type="text" placeholder="Game name…" maxlength="80">
+        <input class="player-name" id="playerName" type="text" placeholder="Player tracked (optional)" maxlength="60">
+      </div>
+      <button class="new-game-btn" id="newGameBtnHeader" title="Start a new game">+</button>
       <button class="menu-btn" id="menuBtn" title="Menu">≡</button>
     </div>
 
@@ -591,6 +604,74 @@
   </div>
 </div>
 
+<!-- New Game Setup Modal -->
+<div class="modal-bg" id="newGameModal">
+  <div class="modal">
+    <h2>New Game</h2>
+    <h3>Game Info</h3>
+    <div class="settings-row">
+      <label for="ngName">Game name</label>
+      <input class="modal-input" id="ngName" type="text" placeholder="e.g., Apr 27 vs Cobra" maxlength="80">
+    </div>
+    <div class="settings-row">
+      <label for="ngPlayer">Player tracked</label>
+      <input class="modal-input" id="ngPlayer" type="text" placeholder="Player name (optional)" maxlength="60">
+    </div>
+    <h3>Game Format</h3>
+    <div class="settings-row">
+      <label for="ngPreset">Preset</label>
+      <select id="ngPreset" class="modal-input mono" style="margin-bottom: 0;">
+        <option value="quarters_6">Quarters · 4 × 6:00 (youth)</option>
+        <option value="quarters_8" selected>Quarters · 4 × 8:00 (HS, AAU)</option>
+        <option value="quarters_10">Quarters · 4 × 10:00 (NCAA W, FIBA)</option>
+        <option value="quarters_12">Quarters · 4 × 12:00 (NBA)</option>
+        <option value="halves_16">Halves · 2 × 16:00 (travel ball)</option>
+        <option value="halves_20">Halves · 2 × 20:00 (NCAA M)</option>
+        <option value="custom">Custom</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label for="ngLength">Period length</label>
+      <input class="modal-input mono" id="ngLength" type="text" placeholder="MM:SS" pattern="[0-9]{1,3}:[0-9]{2}" value="08:00" style="margin-bottom: 0;">
+    </div>
+    <h3>Video Source <span style="font-size:11px; color: var(--ink-faint); font-weight:400; letter-spacing:0; text-transform:none;">(optional — set up later if you prefer)</span></h3>
+    <div class="settings-row">
+      <label for="ngVidMode">Source</label>
+      <select id="ngVidMode" class="modal-input mono" style="margin-bottom: 0;">
+        <option value="none" selected>None for now</option>
+        <option value="youtube">YouTube URL</option>
+        <option value="local">Local mp4 file</option>
+      </select>
+    </div>
+    <div class="settings-row" id="ngYtRow" style="display:none;">
+      <label for="ngYtUrl">YouTube URL</label>
+      <input class="modal-input" id="ngYtUrl" type="text" placeholder="https://www.youtube.com/watch?v=...">
+    </div>
+    <div class="settings-row" id="ngLocalRow" style="display:none;">
+      <label for="ngLocalFile">Local file</label>
+      <input type="file" id="ngLocalFile" accept="video/*">
+    </div>
+    <div class="modal-btn-row" style="margin-top: 14px;">
+      <button class="modal-btn primary" id="ngCreate">Create Game</button>
+      <button class="modal-btn" id="ngCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Prompt Modal (shown on page load if saved games exist) -->
+<div class="modal-bg" id="loadPromptModal">
+  <div class="modal">
+    <h2>Welcome Back</h2>
+    <p style="color: var(--ink-soft); font-size: 13px; margin-bottom: 12px;">You have <span id="loadPromptCount">0</span> saved game(s). Continue one, or start fresh.</p>
+    <h3>Continue a Game</h3>
+    <div class="game-list" id="loadPromptList"></div>
+    <h3>Or</h3>
+    <div class="modal-btn-row">
+      <button class="modal-btn primary" id="loadPromptNew">+ Start New Game</button>
+    </div>
+  </div>
+</div>
+
 <!-- Edit Time Modal -->
 <div class="modal-bg" id="timeModal">
   <div class="modal">
@@ -787,6 +868,7 @@ async function exportThisGame() {
   const data = {
     type: 'singleGame',
     name: game.name,
+    playerName: game.playerName || '',
     format: game.format || 'quarters',
     period: game.period,
     periodLengthSec: game.periodLengthSec,
@@ -840,6 +922,7 @@ async function shareGameLink() {
   if (!game) return;
   const data = {
     name: game.name,
+    playerName: game.playerName || '',
     format: game.format || 'quarters',
     period: game.period,
     periodLengthSec: game.periodLengthSec,
@@ -875,7 +958,7 @@ async function shareGameLink() {
 
 async function checkSharedGame() {
   const hash = location.hash || '';
-  if (hash.indexOf('#share=') !== 0) return;
+  if (hash.indexOf('#share=') !== 0) return false;
   const encoded = hash.slice(7);
   let raw;
   try {
@@ -887,25 +970,24 @@ async function checkSharedGame() {
       throw new Error('unknown share format');
     }
     const data = JSON.parse(raw);
-    if (!confirm(`Open shared game "${data.name || 'Untitled'}"?\n\nIt will be saved as a new game in your tracker. Your existing games are not touched.`)) {
-      history.replaceState(null, '', location.pathname);
-      return;
-    }
     await createGame('[SHARED] ' + (data.name || 'Untitled'));
     game.events = data.events || [];
     game.format = data.format || 'quarters';
     game.period = data.period || (game.format === 'halves' ? 'H1' : 'Q1');
     game.periodLengthSec = data.periodLengthSec || (game.format === 'halves' ? 960 : 480);
     game.videoSource = data.videoSource || null;
+    game.playerName = data.playerName || '';
     await saveGame();
     applyGameToUI();
     render();
     history.replaceState(null, '', location.pathname);
     offerVideoFromGame(game);
     toast('Shared game loaded', 'success');
+    return true;
   } catch (e) {
     toast('Invalid share link: ' + e.message, 'error');
     history.replaceState(null, '', location.pathname);
+    return false;
   }
 }
 
@@ -931,35 +1013,146 @@ function newId() { return 'g_' + Date.now().toString(36) + '_' + Math.random().t
 
 async function loadAll() {
   games = (await safeGet(KEY_INDEX, [])) || [];
-  let currentId = await safeGet(KEY_CURRENT, null);
-  if (!currentId || !games.find(g => g.id === currentId)) {
-    if (games.length === 0) {
-      await createGame('Game 1');
-      return;
-    }
-    currentId = games[0].id;
-    await safeSet(KEY_CURRENT, currentId);
-  }
-  game = await safeGet(keyGame(currentId), null);
-  if (!game) {
-    await createGame('Game 1');
+  if (games.length === 0) {
+    // First-time user — go straight to New Game setup
+    showNewGameModal();
     return;
   }
-  applyGameToUI();
-  render();
+  // Existing user — show prompt: continue an existing game or start fresh
+  showLoadPrompt();
 }
 
-async function createGame(name) {
+// Load a specific game by id (used by the load prompt and the menu game list)
+async function loadGameById(id, isResumed) {
+  const g = await safeGet(keyGame(id), null);
+  if (!g) { toast('Game not found', 'error'); return; }
+  game = g;
+  await safeSet(KEY_CURRENT, id);
+  applyGameToUI();
+  render();
+  // Show the resumed badge only if user picked "continue" from the load prompt
+  const badge = document.getElementById('resumeBadge');
+  if (badge) badge.classList.toggle('hidden', !isResumed);
+}
+
+function showLoadPrompt() {
+  const list = document.getElementById('loadPromptList');
+  document.getElementById('loadPromptCount').textContent = games.length;
+  // Sort games by createdAt descending so the most recent is at top
+  const sorted = [...games].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  list.innerHTML = sorted.map(g => {
+    const date = new Date(g.createdAt || 0).toLocaleDateString();
+    return `
+      <div class="game-item" data-load-prompt="${g.id}">
+        <div>
+          <div class="name">${escapeHtml(g.name)}</div>
+          <div class="meta">${date}</div>
+        </div>
+        <button class="modal-btn primary" data-load-prompt-btn="${g.id}" style="flex:0; min-width:auto; padding:6px 14px;">Continue</button>
+      </div>
+    `;
+  }).join('');
+  showModal('loadPromptModal');
+}
+
+function showNewGameModal() {
+  // Clear and prefill
+  document.getElementById('ngName').value = '';
+  document.getElementById('ngPlayer').value = '';
+  document.getElementById('ngPreset').value = 'quarters_8';
+  document.getElementById('ngLength').value = '08:00';
+  document.getElementById('ngVidMode').value = 'none';
+  document.getElementById('ngYtUrl').value = '';
+  document.getElementById('ngLocalFile').value = '';
+  document.getElementById('ngYtRow').style.display = 'none';
+  document.getElementById('ngLocalRow').style.display = 'none';
+  // Hide load prompt if it was open
+  hideModal('loadPromptModal');
+  showModal('newGameModal');
+  // Focus the name field
+  setTimeout(() => document.getElementById('ngName').focus(), 100);
+}
+
+const NEW_GAME_PRESETS = {
+  quarters_6:  { format: 'quarters', sec: 360,  label: '06:00' },
+  quarters_8:  { format: 'quarters', sec: 480,  label: '08:00' },
+  quarters_10: { format: 'quarters', sec: 600,  label: '10:00' },
+  quarters_12: { format: 'quarters', sec: 720,  label: '12:00' },
+  halves_16:   { format: 'halves',   sec: 960,  label: '16:00' },
+  halves_20:   { format: 'halves',   sec: 1200, label: '20:00' }
+};
+
+async function createGameFromModal() {
+  const name = (document.getElementById('ngName').value || '').trim();
+  const playerName = (document.getElementById('ngPlayer').value || '').trim();
+  const presetKey = document.getElementById('ngPreset').value;
+  const lengthStr = document.getElementById('ngLength').value;
+  const vidMode = document.getElementById('ngVidMode').value;
+
+  // Determine format + period length
+  let format, periodSec;
+  if (presetKey === 'custom') {
+    // Format is currently shown as 'Custom' in the dropdown but format isn't part of it.
+    // Default to quarters in custom mode unless period length is unusually long (treat as halves).
+    const sec = parseClock(lengthStr);
+    if (sec === null || sec < 30) { toast('Invalid period length', 'error'); return; }
+    periodSec = sec;
+    format = sec >= 900 ? 'halves' : 'quarters';
+  } else {
+    const p = NEW_GAME_PRESETS[presetKey];
+    if (!p) { toast('Invalid preset', 'error'); return; }
+    format = p.format;
+    // Allow user to override the period length even when preset is selected
+    const overrideSec = parseClock(lengthStr);
+    periodSec = (overrideSec && overrideSec >= 30) ? overrideSec : p.sec;
+  }
+
+  // Default name if empty
+  const finalName = name || `Game ${games.length + 1}`;
+
+  await createGame(finalName, { playerName, format, periodLengthSec: periodSec });
+  applyGameToUI();
+  render();
+
+  // Auto-load video if specified
+  if (vidMode === 'youtube') {
+    const url = (document.getElementById('ngYtUrl').value || '').trim();
+    if (url) {
+      // Switch UI to YouTube mode
+      const ytBtn = document.getElementById('modeYtBtn');
+      if (ytBtn) ytBtn.click();
+      const inp = document.getElementById('ytUrlInput');
+      if (inp) inp.value = url;
+      loadYouTube(url);
+    }
+  } else if (vidMode === 'local') {
+    const f = document.getElementById('ngLocalFile').files && document.getElementById('ngLocalFile').files[0];
+    if (f) loadLocalVideo(f);
+  }
+
+  // Hide the resumed badge — this is a fresh game
+  const badge = document.getElementById('resumeBadge');
+  if (badge) badge.classList.add('hidden');
+
+  hideModal('newGameModal');
+  toast(`Game created: ${finalName}`, 'success');
+}
+
+async function createGame(name, opts = {}) {
   const id = newId();
+  const fmt = opts.format || 'quarters';
+  const periodLen = opts.periodLengthSec || (fmt === 'halves' ? 960 : 480);
   game = {
     id,
     name: name || 'New Game',
-    format: 'quarters',
-    period: 'Q1',
+    playerName: opts.playerName || '',
+    format: fmt,
+    period: fmt === 'halves' ? 'H1' : 'Q1',
     events: [],
     createdAt: Date.now(),
-    periodLengthSec: 480,
-    videoSource: null
+    periodLengthSec: periodLen,
+    videoSource: null,
+    clockTimeline: [{ filmTime: 0, gameClockSec: periodLen, isRunning: false, period: fmt === 'halves' ? 'H1' : 'Q1' }]
   };
   games.unshift({ id, name: game.name, createdAt: game.createdAt });
   await safeSet(KEY_INDEX, games);
@@ -1006,6 +1199,8 @@ async function saveGame() {
 
 function applyGameToUI() {
   document.getElementById('gameName').value = game.name;
+  const pn = document.getElementById('playerName');
+  if (pn) pn.value = game.playerName || '';
   if (!game.format) game.format = 'quarters';
   // Default period if invalid for the format
   const validPeriods = game.format === 'halves' ? ['H1','H2','OT'] : ['Q1','Q2','Q3','Q4','OT'];
@@ -2084,12 +2279,16 @@ function buzz(ms) { if (navigator.vibrate) try { navigator.vibrate(ms); } catch 
 // Wire-up
 // ============================================================
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadAll();
+  // Load games index from storage so checkSharedGame & loadAll can use it
+  games = (await safeGet(KEY_INDEX, [])) || [];
+  // First: if URL has #share=, load that and skip the load prompt
+  const sharedLoaded = await checkSharedGame();
+  if (!sharedLoaded) {
+    // Otherwise show the load prompt (or new-game setup if no saved games)
+    await loadAll();
+  }
   renderGameClock();
   updateFilmClock();
-
-  // Check for a shared game in the URL fragment (#share=…)
-  await checkSharedGame();
 
   // Auto-resume voice if the user opted in (must be on https:// or localhost
   // for the mic permission to persist; on file:// Chrome will re-prompt)
@@ -2107,6 +2306,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     nameInput.value = game.name;
     await saveGame();
   });
+
+  // Player name
+  const playerInput = document.getElementById('playerName');
+  if (playerInput) {
+    playerInput.addEventListener('change', async () => {
+      game.playerName = playerInput.value.trim();
+      await saveGame();
+    });
+  }
+
+  // + New Game button in header
+  const newGameHeaderBtn = document.getElementById('newGameBtnHeader');
+  if (newGameHeaderBtn) newGameHeaderBtn.addEventListener('click', showNewGameModal);
+
+  // New Game setup modal buttons
+  document.getElementById('ngCancel').addEventListener('click', () => hideModal('newGameModal'));
+  document.getElementById('ngCreate').addEventListener('click', createGameFromModal);
+  // Preset selection in new game modal updates the period length input
+  document.getElementById('ngPreset').addEventListener('change', (e) => {
+    const p = NEW_GAME_PRESETS[e.target.value];
+    if (p) document.getElementById('ngLength').value = p.label;
+  });
+  // Video mode selector reveals the right field
+  document.getElementById('ngVidMode').addEventListener('change', (e) => {
+    document.getElementById('ngYtRow').style.display = e.target.value === 'youtube' ? 'grid' : 'none';
+    document.getElementById('ngLocalRow').style.display = e.target.value === 'local' ? 'grid' : 'none';
+  });
+
+  // Load Prompt modal — clicking a game continues it; clicking + Start New opens the setup modal
+  document.getElementById('loadPromptList').addEventListener('click', (e) => {
+    const item = e.target.closest('[data-load-prompt]') || e.target.closest('[data-load-prompt-btn]');
+    if (!item) return;
+    const id = item.dataset.loadPrompt || item.dataset.loadPromptBtn;
+    if (!id) return;
+    hideModal('loadPromptModal');
+    loadGameById(id, true);
+  });
+  document.getElementById('loadPromptNew').addEventListener('click', showNewGameModal);
 
   // Period selector — also resets game clock to full period
   document.getElementById('periodSelect').addEventListener('click', async (e) => {
@@ -2209,11 +2446,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Menu
   document.getElementById('menuBtn').addEventListener('click', openMenu);
   document.getElementById('closeMenu').addEventListener('click', closeMenu);
-  document.getElementById('newGameBtn').addEventListener('click', async () => {
-    const name = prompt('Name for new game?', `Game ${games.length + 1}`);
-    if (name === null) return;
-    await createGame(name.trim() || `Game ${games.length + 1}`);
+  document.getElementById('newGameBtn').addEventListener('click', () => {
     closeMenu();
+    showNewGameModal();
   });
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
   document.getElementById('exportBackupBtn').addEventListener('click', exportBackup);
